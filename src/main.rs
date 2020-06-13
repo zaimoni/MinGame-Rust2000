@@ -1,6 +1,8 @@
 mod isk;
 
-use tcod::console::{Root};
+use std::rc::Rc;
+use std::cell::RefCell;
+use tcod::console::Root;
 use crate::isk::*;
 
 const legal_screenpos_x: i32 = 80;
@@ -62,6 +64,8 @@ fn main() {
     let mut player_screenpos = [screen_width/2, screen_height/2];   // ultimately converted from global coordinates
 
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
+    let mockup_map = Rc::new(RefCell::new(Map::new([50, 50])));
+    let player_loc = Location::new(mockup_map, player_screenpos);
 
     while !dm.root.window_closed() {
         dm.clear();

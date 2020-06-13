@@ -1,5 +1,7 @@
 use tcod::colors;
 use tcod::console::{Root , Offscreen, Console, FontLayout, FontType, BackgroundFlag, blit};
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub const screen_width: i32 = 80;
 pub const screen_height: i32 = 50;
@@ -34,5 +36,30 @@ impl DisplayManager {
     pub fn render(&mut self) {
         blit(&self.offscr, (0, 0), (screen_width, screen_height), &mut self.root, (0, 0), 1.0, 1.0);
         self.root.flush();
+    }
+}
+
+pub struct Map {
+    dim : [i32;2]
+}
+
+impl Map {
+    pub fn new(_dim: [i32;2]) -> Map {
+        debug_assert!(0 < _dim[0] && 0 < _dim[1]);
+        return Map{dim:_dim};
+    }
+
+    pub fn width(&self) -> i32 { return self.dim[0]; }
+    pub fn height(&self) -> i32 { return self.dim[1]; }
+}
+
+pub struct Location {
+    pub map : Rc<RefCell<Map>>,
+    pub pos : [i32;2]
+}
+
+impl Location {
+    pub fn new(m : Rc<RefCell<Map>>, p : [i32;2]) -> Location {
+        return Location{map:m, pos:p};
     }
 }

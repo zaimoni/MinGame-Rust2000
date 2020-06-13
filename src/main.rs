@@ -1,6 +1,6 @@
 mod isk;
 
-use tcod::console::{Root, Console, BackgroundFlag};
+use tcod::console::{Root};
 use crate::isk::*;
 
 const legal_screenpos_x: i32 = 80;
@@ -8,7 +8,7 @@ const legal_screenpos_y: i32 = 50;
 
 // this is going to lift to another file eventually
 // We likely should be passing a Player or PlayerController object
-fn handle_events(r: &mut Root, pl_scrpos: &mut Vec<i32>) -> bool {
+fn handle_events(r: &mut Root, pl_scrpos: &mut [i32;2]) -> bool {
     use tcod::input::{Key, KeyCode /*,EventFlags,check_for_event*/};
 
 //  let ev = check_for_event(EventFlags::Keypress);
@@ -59,13 +59,13 @@ fn handle_events(r: &mut Root, pl_scrpos: &mut Vec<i32>) -> bool {
 }
 
 fn main() {
-    let mut player_screenpos = vec![screen_width/2, screen_height/2];   // ultimately converted from global coordinates
+    let mut player_screenpos = [screen_width/2, screen_height/2];   // ultimately converted from global coordinates
 
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
 
     while !dm.root.window_closed() {
         dm.clear();
-        dm.offscr.put_char(player_screenpos[0], player_screenpos[1], '@', BackgroundFlag::None);
+        dm.draw(&player_screenpos, '@');
         dm.render();
 
         // Handling user input

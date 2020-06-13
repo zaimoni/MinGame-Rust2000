@@ -23,6 +23,14 @@ impl DisplayManager {
         self.offscr.clear();
     }
 
+    pub fn in_bounds(scr_loc: &[i32;2]) -> bool {
+        return 0<= scr_loc[0] && screen_width > scr_loc[0] && 0<= scr_loc[1] && screen_height > scr_loc[1];
+    }
+
+    pub fn draw(&mut self, scr_loc: &[i32;2], img : char) {
+        if DisplayManager::in_bounds(scr_loc) { self.offscr.put_char(scr_loc[0], scr_loc[1], img, BackgroundFlag::None); }
+    }
+
     pub fn render(&mut self) {
         blit(&self.offscr, (0, 0), (screen_width, screen_height), &mut self.root, (0, 0), 1.0, 1.0);
         self.root.flush();

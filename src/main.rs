@@ -1,5 +1,7 @@
-use tcod::colors;
-use tcod::console::{Root /*, Offscreen*/, Console, FontLayout, FontType, BackgroundFlag};
+mod isk;
+
+use tcod::console::{Root, Console, BackgroundFlag};
+use crate::isk::*;
 
 const legal_screenpos_x: i32 = 80;
 const legal_screenpos_y: i32 = 50;
@@ -57,21 +59,17 @@ fn handle_events(r: &mut Root, pl_scrpos: &mut Vec<i32>) -> bool {
 }
 
 fn main() {
-    let (screen_width, screen_height) = (80, 50);
-
     let mut player_screenpos = vec![screen_width/2, screen_height/2];   // ultimately converted from global coordinates
 
-    let mut root = Root::initializer().size(screen_width, screen_height).title("TCOD Skeleton Game").font("fonts/dejavu12x12_gs_tc.png",FontLayout::Tcod).font_type(FontType::Greyscale).init();
-//  let mut offscreen = Offscreen::new(screen_width, screen_height);    // going to double-buffer at some point
+    let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
 
-    while !root.window_closed() {
-        root.set_default_foreground(colors::WHITE);
-        root.clear();
-        root.put_char(player_screenpos[0], player_screenpos[1], '@', BackgroundFlag::None);
-        root.flush();
+    while !dm.root.window_closed() {
+        dm.clear();
+        dm.offscr.put_char(player_screenpos[0], player_screenpos[1], '@', BackgroundFlag::None);
+        dm.render();
 
         // Handling user input
-        if handle_events(&mut root, &mut player_screenpos) { return; }
+        if handle_events(&mut dm.root, &mut player_screenpos) { return; }
 
         // Updating the gamestate
         // Rendering the results

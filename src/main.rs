@@ -1,17 +1,15 @@
 mod isk;
 
-use std::rc::Rc;
-use std::cell::RefCell;
 use tcod::console::Root;
 use crate::isk::*;
-
-const legal_screenpos_x: i32 = 80;
-const legal_screenpos_y: i32 = 50;
 
 // this is going to lift to another file eventually
 // We likely should be passing a Player or PlayerController object
 fn handle_events(r: &mut Root, pl_scrpos: &mut [i32;2]) -> bool {
     use tcod::input::{Key, KeyCode /*,EventFlags,check_for_event*/};
+
+    const legal_screenpos_x: i32 = 80;
+    const legal_screenpos_y: i32 = 50;
 
 //  let ev = check_for_event(EventFlags::Keypress);
     let key = r.wait_for_keypress(true);    // could r.check_for_keypress instead but then would have to pause/multi-process explicitly
@@ -64,8 +62,9 @@ fn main() {
     let mut player_screenpos = [screen_width/2, screen_height/2];   // ultimately converted from global coordinates
 
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
-    let mockup_map = Rc::new(RefCell::new(Map::new([50, 50])));
-    let player_loc = Location::new(mockup_map, player_screenpos);
+    let mut world = World::new();
+    let mockup_map = world.new_map([50, 50]);
+    let player_loc = Location::new(&mockup_map, player_screenpos);
 
     while !dm.root.window_closed() {
         dm.clear();

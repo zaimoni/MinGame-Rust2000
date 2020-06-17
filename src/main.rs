@@ -8,8 +8,8 @@ use crate::isk::*;
 fn handle_events(r: &mut Root, pl_scrpos: &mut [i32;2]) -> bool {
     use tcod::input::{Key, KeyCode /*,EventFlags,check_for_event*/};
 
-    const legal_screenpos_x: i32 = 80;
-    const legal_screenpos_y: i32 = 50;
+    const legal_screenpos_x: i32 = view;
+    const legal_screenpos_y: i32 = view;
 
 //  let ev = check_for_event(EventFlags::Keypress);
     let key = r.wait_for_keypress(true);    // could r.check_for_keypress instead but then would have to pause/multi-process explicitly

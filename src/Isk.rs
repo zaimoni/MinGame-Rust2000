@@ -4,8 +4,13 @@ use std::rc::Rc;
 use std::rc::Weak;
 use std::cell::RefCell;
 
-pub const screen_width: i32 = 80;
-pub const screen_height: i32 = 50;
+// at some point we'll want both a sidebar and a message bar
+pub const view_radius: i32 = 21;    // Cf. Cataclysm:Z, Rogue Survivor Revived
+pub const view: i32 = 2*view_radius+1;
+pub const sidebar_width: i32 = 37;
+pub const message_bar_height: i32 = 7;
+pub const screen_width: i32 = view+sidebar_width;
+pub const screen_height: i32 = view+message_bar_height;
 
 pub struct DisplayManager {
     pub root: Root,
@@ -88,6 +93,9 @@ impl Location {
 
 pub struct World {
     atlas : Vec<r_Map>
+//  offset: ... // (C++: std::map<std::pair<std::shared_ptr<Map>,std::shared_ptr<Map>>,[i32;2]>)
+//  exits: ... // unordered pairs of locations
+//  exits_one_way: ...  // ordered pairs of locations
 }
 
 impl World {

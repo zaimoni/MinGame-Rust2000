@@ -2,6 +2,7 @@ mod isk;
 
 use tcod::console::Root;
 use crate::isk::*;
+use crate::isk::gps::*;
 
 // this is going to lift to another file eventually
 // We likely should be passing a Player or PlayerController object
@@ -63,7 +64,7 @@ fn main() {
 
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
     let mut world = World::new();
-    let mockup_map = world.new_map([50, 50]);
+    let mockup_map = world.new_map([VIEW, VIEW]);
     let player_loc = Location::new(&mockup_map, player_screenpos);
 
     while !dm.root.window_closed() {

@@ -87,6 +87,7 @@ impl DisplayManager {
     }
 }
 
+#[derive(PartialEq)]
 pub struct Map {
     dim : [i32;2]
 }
@@ -152,5 +153,33 @@ impl World {
         let ret = Rc::new(RefCell::new(Map::new(_dim)));
         self.atlas.push(ret.clone());
         return ret;
+    }
+
+    pub fn canonical_loc(&self, viewpoint:Location) -> Option<Location> {
+        match viewpoint.map.try_borrow() {
+            Ok(m) => {
+                if m.in_bounds(viewpoint.pos) {
+                    return Some(Location::new(&viewpoint.map, viewpoint.pos));
+                }
+                // \todo translation code
+                return None;
+            },
+            _ => {
+                debug_assert!(false, "unsafe borrow");
+                return None; // non-lethal failure in release mode
+            }
+        }
+    }
+
+    pub fn coerce_map(&self, src:Location, viewpoint:r_Map) -> Option<Location> {
+        if src.map == viewpoint {
+            return Some(src);
+        }
+        // \todo translation code
+        return None;
+    }
+
+    pub fn screen_to_loc(&self, src:[i32;2], topleft:Location) -> Option<Location> {
+        return self.canonical_loc(Location::new(&topleft.map, [topleft.pos[0]+src[0], topleft.pos[1]+src[1]]));
     }
 }

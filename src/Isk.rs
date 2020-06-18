@@ -93,10 +93,17 @@ impl DisplayManager {
 }
 
 pub struct ActorModel {
+    pub name: String,
     pub tile: TileSpec
 }
 type r_ActorModel = Rc<RefCell<ActorModel>>;
 type w_ActorModel = Weak<RefCell<ActorModel>>;
+
+impl ActorModel {
+    fn new(_name: &str, _tile:TileSpec) -> ActorModel {
+        return ActorModel{name:_name.to_string(), tile:_tile};
+    }
+}
 
 pub struct Actor {
     pub is_pc: bool,
@@ -126,10 +133,17 @@ impl ConsoleRenderable for Actor {
 }
 
 pub struct MapObjectModel {
+    pub name: String,
     pub tile: TileSpec
 }
 type r_MapObjectModel = Rc<RefCell<MapObjectModel>>;
 type w_MapObjectModel = Weak<RefCell<MapObjectModel>>;
+
+impl MapObjectModel {
+    fn new(_name: &str, _tile:TileSpec) -> MapObjectModel {
+        return MapObjectModel{name:_name.to_string(), tile:_tile};
+    }
+}
 
 pub struct MapObject {
     pub model: r_MapObjectModel,
@@ -155,21 +169,33 @@ impl ConsoleRenderable for MapObject {
 }
 
 pub struct World {
-    atlas : Vec<r_Map>
+    atlas : Vec<r_Map>,
 //  offset: ... // (C++: std::map<std::pair<std::shared_ptr<Map>,std::shared_ptr<Map>>,[i32;2]>)
 //  exits: ... // unordered pairs of locations
 //  exits_one_way: ...  // ordered pairs of locations
+//  not clear how to do C++ static member variables; put these here rather than where they belong
+    actor_types: Vec<r_ActorModel>,
+    obj_types: Vec<r_MapObjectModel>
 }
 
 impl World {
     pub fn new() -> World {
-        return World{atlas:Vec::new()}
+        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new()};
     }
 
     pub fn new_map(&mut self, _name:&str, _dim: [i32;2]) -> r_Map {
         let ret = Rc::new(RefCell::new(Map::new(_name, _dim)));
         self.atlas.push(ret.clone());
         return ret;
+    }
+
+    pub fn get_map(&self, _name:&str) -> Option<r_Map> {
+        for m in &self.atlas {
+            if let Ok(map) = m.try_borrow() {
+                if map.is_named(_name) { return Some(m.clone()); };
+            }
+        }
+        return None;
     }
 
     pub fn canonical_loc(&self, viewpoint:Location) -> Option<Location> {

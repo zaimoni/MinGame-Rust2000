@@ -26,6 +26,11 @@ impl Map {
         return Map{name:_name.to_string(), dim:_dim, actors:Vec::new(), objects:HashMap::new()};
     }
 
+    // accessor-likes
+    pub fn is_named(&self, x:&str) -> bool {
+        return self.name == x;
+    }
+
     pub fn width(&self) -> i32 { return self.dim[0]; }
     pub fn height(&self) -> i32 { return self.dim[1]; }
     pub fn in_bounds(&self, pt: [i32;2]) -> bool {

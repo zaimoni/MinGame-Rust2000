@@ -12,6 +12,18 @@ pub const message_bar_height: i32 = 7;
 pub const screen_width: i32 = view+sidebar_width;
 pub const screen_height: i32 = view+message_bar_height;
 
+// since Rust intentionally does not have function overloading, we have to obfuscate other data structures to compensate
+pub struct CharSpec {
+    pub img: char,
+    pub c: Option<colors::Color>
+}
+
+// image tiles would go here
+pub struct ImgSpec {
+    pub img: String,    // the id value
+}
+type TileSpec = Result<CharSpec, ImgSpec>;
+
 pub struct DisplayManager {
     pub root: Root,
     pub offscr: Offscreen,
@@ -48,6 +60,24 @@ impl DisplayManager {
                 self.offscr.set_default_foreground(self.last_fg);
             }
             self.offscr.put_char(scr_loc[0], scr_loc[1], img, BackgroundFlag::None);
+        }
+    }
+
+    pub fn draw_t(&mut self, scr_loc: &[i32;2], img : TileSpec) {
+        if DisplayManager::in_bounds(scr_loc) {
+            match img {
+                Ok(t) => {
+                    match t.c {
+                        Some(col) => {
+                            self.last_fg = col;
+                            self.offscr.set_default_foreground(self.last_fg);
+                        },
+                        None => ()
+                    }
+                    self.offscr.put_char(scr_loc[0], scr_loc[1], t.img, BackgroundFlag::None);
+                },
+                _ => {debug_assert!(false,"image tiles not implemented")},
+            };
         }
     }
 

@@ -60,7 +60,7 @@ fn handle_events(r: &mut Root, pl_scrpos: &mut [i32;2]) -> bool {
 }
 
 fn main() {
-    let mut player_screenpos = [screen_width/2, screen_height/2];   // ultimately converted from global coordinates
+    let mut player_screenpos = [VIEW_RADIUS, VIEW_RADIUS];   // ultimately converted from global coordinates
 
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
     let mut world = World::new();

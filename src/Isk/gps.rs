@@ -47,10 +47,11 @@ impl Location {
     }
 }
 
-pub trait ConsoleRenderable<'a> {
-    fn loc() -> Location;
-    fn fg() -> TileSpec;
-    fn r_loc() -> &'a Location;
-    fn r_fg() -> &'a TileSpec;
+pub trait ConsoleRenderable {
+    fn loc(&self) -> Location;
+    fn fg(&self) -> TileSpec;
+    // C++ reference-return signatures are not practical; we are required to spam the garbage collector, much like C#.
+    // r_fg(&self) -> &TileSpec ends up routing through a C++ std::shared simulation; this correctly compile-errors.
+    // r_loc(&self) -> &Location might be repairable w/lifetime specifiers, but the compiler errors are not clear about that.
 }
 

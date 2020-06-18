@@ -16,12 +16,14 @@ pub const screen_width: i32 = VIEW+SIDEBAR_WIDTH;
 pub const screen_height: i32 = VIEW+MESSAGE_BAR_HEIGHT;
 
 // since Rust intentionally does not have function overloading, we have to obfuscate other data structures to compensate
+#[derive(Clone)]
 pub struct CharSpec {
     pub img: char,
     pub c: Option<colors::Color>
 }
 
 // image tiles would go here
+#[derive(Clone)]
 pub struct ImgSpec {
     pub img: String,    // the id value
 }
@@ -98,7 +100,29 @@ type w_ActorModel = Weak<RefCell<ActorModel>>;
 
 pub struct Actor {
     pub is_pc: bool,
-    pub model: r_ActorModel
+    pub model: r_ActorModel,
+    my_loc: Location
+}
+
+impl ConsoleRenderable for Actor {
+    fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
+    fn fg(&self) -> TileSpec {
+        if self.is_pc { return Ok(CharSpec{img:'@', c:None}); }
+        else {
+            match self.model.try_borrow() {
+                Ok(m) => {
+                    match &m.tile {
+                        Ok(icon) => { return Ok((*icon).clone()); },
+                        Err(im) => { return Err((*im).clone()); }
+                    }
+                },
+                _ => {
+                    debug_assert!(false, "unsafe borrow");
+                    return Ok(CharSpec{img:'*', c:None}); // non-lethal failure in release mode
+                }
+            }
+        }
+    }
 }
 
 pub struct MapObjectModel {
@@ -108,7 +132,26 @@ type r_MapObjectModel = Rc<RefCell<MapObjectModel>>;
 type w_MapObjectModel = Weak<RefCell<MapObjectModel>>;
 
 pub struct MapObject {
-    pub model: r_MapObjectModel
+    pub model: r_MapObjectModel,
+    my_loc: Location
+}
+
+impl ConsoleRenderable for MapObject {
+    fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
+    fn fg(&self) -> TileSpec {
+        match self.model.try_borrow() {
+            Ok(m) => {
+                match &m.tile {
+                    Ok(icon) => { return Ok((*icon).clone()); },
+                    Err(im) => { return Err((*im).clone()); }
+                }
+            },
+            _ => {
+                debug_assert!(false, "unsafe borrow");
+                return Ok(CharSpec{img:'*', c:None}); // non-lethal failure in release mode
+            }
+        }
+    }
 }
 
 pub struct World {

@@ -68,7 +68,7 @@ fn main() {
 
     while !dm.root.window_closed() {
         dm.clear();
-        dm.draw(&player_screenpos, '@');
+        dm.draw(&player_screenpos, Ok(CharSpec{img:'@', c:None}));
         dm.render();
 
         // Handling user input

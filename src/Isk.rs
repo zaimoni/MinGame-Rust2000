@@ -49,21 +49,7 @@ impl DisplayManager {
 
     // work around design decision to not have function overloading in Rust
     // SFML port would also allow tiles
-    pub fn draw(&mut self, scr_loc: &[i32;2], img : char) {
-        if DisplayManager::in_bounds(scr_loc) { self.offscr.put_char(scr_loc[0], scr_loc[1], img, BackgroundFlag::None); }
-    }
-
-    pub fn draw2(&mut self, scr_loc: &[i32;2], img : char, c : &colors::Color) {
-        if DisplayManager::in_bounds(scr_loc) {
-            if self.last_fg != *c {
-                self.last_fg = *c;
-                self.offscr.set_default_foreground(self.last_fg);
-            }
-            self.offscr.put_char(scr_loc[0], scr_loc[1], img, BackgroundFlag::None);
-        }
-    }
-
-    pub fn draw_t(&mut self, scr_loc: &[i32;2], img : TileSpec) {
+    pub fn draw(&mut self, scr_loc: &[i32;2], img : TileSpec) {
         if DisplayManager::in_bounds(scr_loc) {
             match img {
                 Ok(t) => {

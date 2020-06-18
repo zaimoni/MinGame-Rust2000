@@ -5,12 +5,12 @@ use std::rc::Weak;
 use std::cell::RefCell;
 
 // at some point we'll want both a sidebar and a message bar
-pub const view_radius: i32 = 21;    // Cf. Cataclysm:Z, Rogue Survivor Revived
-pub const view: i32 = 2*view_radius+1;
-pub const sidebar_width: i32 = 37;
-pub const message_bar_height: i32 = 7;
-pub const screen_width: i32 = view+sidebar_width;
-pub const screen_height: i32 = view+message_bar_height;
+pub const VIEW_RADIUS: i32 = 21;    // Cf. Cataclysm:Z, Rogue Survivor Revived
+pub const VIEW: i32 = 2*VIEW_RADIUS+1;
+pub const SIDEBAR_WIDTH: i32 = 37;
+pub const MESSAGE_BAR_HEIGHT: i32 = 7;
+pub const screen_width: i32 = VIEW+SIDEBAR_WIDTH;
+pub const screen_height: i32 = VIEW+MESSAGE_BAR_HEIGHT;
 
 // since Rust intentionally does not have function overloading, we have to obfuscate other data structures to compensate
 pub struct CharSpec {
@@ -23,6 +23,7 @@ pub struct ImgSpec {
     pub img: String,    // the id value
 }
 type TileSpec = Result<CharSpec, ImgSpec>;
+type BackgroundSpec = Result<colors::Color, ImgSpec>;
 
 pub struct DisplayManager {
     pub root: Root,
@@ -69,9 +70,15 @@ impl DisplayManager {
 
     // \todo set background variants of above
     // SFML port would also allow tile background
-    pub fn set_bg_color(&mut self, scr_loc: &[i32;2], bg : &colors::Color)
-    {
-        self.offscr.set_char_background(scr_loc[0], scr_loc[1], *bg , BackgroundFlag::Set);
+    pub fn set_bg(&mut self, scr_loc: &[i32;2], bg: BackgroundSpec) {
+        if DisplayManager::in_bounds(scr_loc) {
+            match bg {
+                Ok(col) => {
+                    self.offscr.set_char_background(scr_loc[0], scr_loc[1], col , BackgroundFlag::Set);
+                },
+                _ => {debug_assert!(false,"image background not implemented")},
+            };
+        }
     }
 
     pub fn render(&mut self) {
@@ -94,6 +101,21 @@ impl Map {
 
     pub fn width(&self) -> i32 { return self.dim[0]; }
     pub fn height(&self) -> i32 { return self.dim[1]; }
+    pub fn in_bounds(&self, pt: [i32;2]) -> bool {
+        return 0 <= pt[0] && self.width() > pt[0] && 0 <= pt[1] && self.height() > pt[1];
+    }
+    pub fn in_bounds_r(&self, pt: &[i32;2]) -> bool {
+        return 0 <= (*pt)[0] && self.width() > (*pt)[0] && 0 <= (*pt)[1] && self.height() > (*pt)[1];
+    }
+
+    // inappropriate UI functions
+    pub fn bg(pt: [i32;2]) -> BackgroundSpec {
+        return Ok(colors::BLACK);
+    }
+
+    pub fn tiles(pt: [i32;2]) -> Option<Vec<TileSpec>> {
+        return None;
+    }
 }
 
 pub struct Location {
@@ -105,6 +127,13 @@ impl Location {
     pub fn new(m : &r_Map, p : [i32;2]) -> Location {
         return Location{map:m.clone(), pos:p};
     }
+}
+
+pub trait ConsoleRenderable<'a> {
+    fn loc() -> Location;
+    fn fg() -> TileSpec;
+    fn r_loc() -> &'a Location;
+    fn r_fg() -> &'a TileSpec;
 }
 
 pub struct World {

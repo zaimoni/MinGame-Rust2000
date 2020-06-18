@@ -166,8 +166,8 @@ impl World {
         return World{atlas:Vec::new()}
     }
 
-    pub fn new_map(&mut self, _dim: [i32;2]) -> r_Map {
-        let ret = Rc::new(RefCell::new(Map::new(_dim)));
+    pub fn new_map(&mut self, _name:&str, _dim: [i32;2]) -> r_Map {
+        let ret = Rc::new(RefCell::new(Map::new(_name, _dim)));
         self.atlas.push(ret.clone());
         return ret;
     }

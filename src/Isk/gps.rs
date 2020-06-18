@@ -1,20 +1,29 @@
 use crate::isk::*;
 use tcod::colors;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::rc::Weak;
 use std::cell::RefCell;
 
-#[derive(PartialEq)]
 pub struct Map {
-    dim : [i32;2]
+    dim : [i32;2],
+    name : String,
+    actors: Vec<r_ActorModel>,  // Rogue Survivor Revived needs this for turn ordering
+    objects: HashMap<Location,r_MapObjectModel>
 }
 pub type r_Map = Rc<RefCell<Map>>;   // simulates C# class or C++ std::shared_ptr
 pub type w_Map = Weak<RefCell<Map>>; // simulates C++ std::weak_ptr
 
+impl PartialEq for Map {
+    fn eq(&self, other: &Map) -> bool {
+        return self.name == other.name && self.dim == other.dim;
+    }
+}
+
 impl Map {
-    pub fn new(_dim: [i32;2]) -> Map {
+    pub fn new(_name: &str, _dim: [i32;2]) -> Map {
         debug_assert!(0 < _dim[0] && 0 < _dim[1]);
-        return Map{dim:_dim};
+        return Map{name:_name.to_string(), dim:_dim, actors:Vec::new(), objects:HashMap::new()};
     }
 
     pub fn width(&self) -> i32 { return self.dim[0]; }

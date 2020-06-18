@@ -64,7 +64,7 @@ fn main() {
 
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
     let mut world = World::new();
-    let mockup_map = world.new_map([VIEW, VIEW]);
+    let mockup_map = world.new_map("Mock", [VIEW, VIEW]);
     let player_loc = Location::new(&mockup_map, player_screenpos);
 
     while !dm.root.window_closed() {

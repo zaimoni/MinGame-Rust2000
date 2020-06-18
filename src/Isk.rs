@@ -90,6 +90,27 @@ impl DisplayManager {
     }
 }
 
+pub struct ActorModel {
+    pub tile: TileSpec
+}
+type r_ActorModel = Rc<RefCell<ActorModel>>;
+type w_ActorModel = Weak<RefCell<ActorModel>>;
+
+pub struct Actor {
+    pub is_pc: bool,
+    pub model: r_ActorModel
+}
+
+pub struct MapObjectModel {
+    pub tile: TileSpec
+}
+type r_MapObjectModel = Rc<RefCell<MapObjectModel>>;
+type w_MapObjectModel = Weak<RefCell<MapObjectModel>>;
+
+pub struct MapObject {
+    pub model: r_MapObjectModel
+}
+
 pub struct World {
     atlas : Vec<r_Map>
 //  offset: ... // (C++: std::map<std::pair<std::shared_ptr<Map>,std::shared_ptr<Map>>,[i32;2]>)
@@ -134,5 +155,13 @@ impl World {
 
     pub fn screen_to_loc(&self, src:[i32;2], topleft:Location) -> Option<Location> {
         return self.canonical_loc(Location::new(&topleft.map, [topleft.pos[0]+src[0], topleft.pos[1]+src[1]]));
+    }
+
+    pub fn loc_to_td_camera(&self, center:Location) -> Location {
+        let test = self.canonical_loc(Location::new(&center.map, [center.pos[0] - VIEW_RADIUS, center.pos[1] - VIEW_RADIUS]));
+        match test {
+            Some(loc) => loc,
+            _ => Location::new(&center.map, [0,0])
+        }
     }
 }

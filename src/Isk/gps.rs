@@ -1,5 +1,5 @@
 use crate::isk::*;
-use tcod::colors;
+use std::convert::TryFrom;
 use std::ops::{Add,AddAssign};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -7,10 +7,11 @@ use std::rc::Weak;
 use std::cell::RefCell;
 
 pub struct Map {
-    dim : [i32;2],
+    dim : [usize;2],
     name : String,
     actors: Vec<r_Actor>,  // Rogue Survivor Revived needs this for turn ordering
-    objects: HashMap<Location,r_MapObject>
+    objects: HashMap<Location,r_MapObject>,
+    terrain: Vec<r_Terrain>
 }
 pub type r_Map = Rc<RefCell<Map>>;   // simulates C# class or C++ std::shared_ptr
 pub type w_Map = Weak<RefCell<Map>>; // simulates C++ std::weak_ptr
@@ -22,9 +23,14 @@ impl PartialEq for Map {
 }
 
 impl Map {
-    pub fn new(_name: &str, _dim: [i32;2]) -> Map {
-        debug_assert!(0 < _dim[0] && 0 < _dim[1]);
-        return Map{name:_name.to_string(), dim:_dim, actors:Vec::new(), objects:HashMap::new()};
+    pub fn usize_cast(src:[i32;2]) -> [usize;2] {
+        debug_assert!(0 <= src[0] && 0 <= src[1]);
+        return [usize::try_from(src[0]).unwrap(), usize::try_from(src[1]).unwrap()];
+    }
+
+    pub fn new(_name: &str, _dim: [i32;2], _terrain:r_Terrain) -> Map {
+        let staging = Map::usize_cast(_dim);
+        return Map{name:_name.to_string(), dim:staging, actors:Vec::new(), objects:HashMap::new(), terrain:vec![_terrain; staging[0]*staging[0]]};
     }
 
     pub fn new_actor(&mut self, _model: r_ActorModel, _loc:Location) -> r_Actor {
@@ -37,28 +43,41 @@ impl Map {
     // accessor-likes
     pub fn is_named(&self, x:&str) -> bool { return self.name == x; }
 
-    pub fn width(&self) -> i32 { return self.dim[0]; }
-    pub fn height(&self) -> i32 { return self.dim[1]; }
+    pub fn width(&self) -> usize { return self.dim[0]; }
+    pub fn height(&self) -> usize { return self.dim[1]; }
+    pub fn width_i32(&self) -> i32 { return i32::try_from(self.dim[0]).unwrap(); }
+    pub fn height_i32(&self) -> i32 { return i32::try_from(self.dim[1]).unwrap(); }
     pub fn in_bounds(&self, pt: [i32;2]) -> bool {
-        return 0 <= pt[0] && self.width() > pt[0] && 0 <= pt[1] && self.height() > pt[1];
+        return 0 <= pt[0] && self.width() > usize::try_from(pt[0]).unwrap() && 0 <= pt[1] && self.height() > usize::try_from(pt[1]).unwrap();
     }
-    pub fn in_bounds_r(&self, pt: &[i32;2]) -> bool {
-        return 0 <= (*pt)[0] && self.width() > (*pt)[0] && 0 <= (*pt)[1] && self.height() > (*pt)[1];
+    // \todo in_bounds_r if indicated
+
+    pub fn set_terrain(&mut self, pt: [i32;2], src:r_Terrain) {
+        debug_assert!(self.in_bounds(pt));
+        let dest = Map::usize_cast(pt);
+        self.terrain[dest[0]+dest[1]*self.dim[0]] = src;
     }
 
     // inappropriate UI functions
-    pub fn bg(&self, _pt: [i32;2]) -> BackgroundSpec {
-        return Ok(colors::BLACK);
+    pub fn bg(&self, pt: [usize;2]) -> BackgroundSpec {
+        return self.terrain[pt[0]+pt[1]*self.dim[0]].bg.clone();
     }
+    pub fn bg_i32(&self, pt: [i32;2]) -> BackgroundSpec { return self.bg(Map::usize_cast(pt)); }
 
-    pub fn tiles(&self, _pt: [i32;2]) -> Option<Vec<TileSpec>> {
+    pub fn tiles(&self, pt: [i32;2]) -> Option<Vec<TileSpec>> {
         let mut ret = Vec::<TileSpec>::new();
+        {
+        let pt_usize = Map::usize_cast(pt);
+        let tile_fg = self.terrain[pt_usize[0]+pt_usize[1]*self.dim[0]].tile.clone();
+        if DisplayManager::is_visible(&tile_fg) { ret.push(tile_fg); }
+        }
         // \todo check for map objects
         // \todo check for inventory
         for act in &self.actors {
             if let Ok(a) = act.try_borrow() {
-                if _pt == a.loc().pos {
-                    ret.push(a.fg());
+                if pt == a.loc().pos {
+                    let a_fg = a.fg();
+                    if DisplayManager::is_visible(&a_fg) {ret.push(a_fg);}
                 }
             }
         }

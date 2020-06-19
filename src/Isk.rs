@@ -81,6 +81,17 @@ impl DisplayManager {
         return 0<= scr_loc[0] && SCREEN_WIDTH > scr_loc[0] && 0<= scr_loc[1] && SCREEN_HEIGHT > scr_loc[1];
     }
 
+    pub fn is_visible(src: &TileSpec) -> bool {
+        if let Ok(src) = src {
+            if ' ' != src.img { return true;  }
+            else if let Some(col) = src.c {
+                return colors::BLACK != col;
+            } else { return true; }
+        } else {
+            debug_assert!(false, "image tiles not handled");
+            return true;    // should not need transparent images
+        }
+    }
     // work around design decision to not have function overloading in Rust
     // SFML port would also allow tiles
     pub fn draw(&mut self, scr_loc: &[i32;2], img : TileSpec) {
@@ -145,7 +156,7 @@ type w_Actor = Weak<RefCell<Actor>>;
 impl ConsoleRenderable for Actor {
     fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
     fn fg(&self) -> TileSpec {
-        if self.is_pc { return Ok(CharSpec{img:'@', c:None}); }
+        if self.is_pc { return Ok(CharSpec{img:'@', c:Some(colors::WHITE)}); }
         else {
             match &self.model.tile {
                 Ok(icon) => { return Ok(icon.clone()); },
@@ -212,8 +223,8 @@ impl World {
         return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new()};
     }
 
-    pub fn new_map(&mut self, _name:&str, _dim: [i32;2]) -> r_Map {
-        let ret = Rc::new(RefCell::new(Map::new(_name, _dim)));
+    pub fn new_map(&mut self, _name:&str, _dim: [i32;2], _terrain:r_Terrain) -> r_Map {
+        let ret = Rc::new(RefCell::new(Map::new(_name, _dim, _terrain)));
         self.atlas.push(Rc::clone(&ret));
         return ret;
     }
@@ -308,7 +319,7 @@ impl World {
         let mut canon_br = self.canonical_loc(br.clone());
         while let None = canon_br {
             if 0 < tl.pos[0] {
-                let lb = min(tl.pos[0], br.pos[0]-br.map.borrow().width());
+                let lb = min(tl.pos[0], br.pos[0]-br.map.borrow().width_i32());
                 if 0 < lb {
                     tl.pos[0] -= lb;
                     br.pos[0] -= lb;
@@ -317,7 +328,7 @@ impl World {
                 }
             }
             if 0 < tl.pos[1] {
-                let lb = min(tl.pos[1], br.pos[1]-br.map.borrow().height());
+                let lb = min(tl.pos[1], br.pos[1]-br.map.borrow().height_i32());
                 if 0 < lb {
                     tl.pos[1] -= lb;
                     br.pos[1] -= lb;
@@ -340,9 +351,9 @@ impl World {
                     let m = loc.map.borrow();
                     {
                     let mut bg_ok = true;
-                    let background = m.bg(loc.pos);
+                    let background = m.bg_i32(loc.pos);
                     if let Ok(col) = background {
-                        if colors::BLACK == col {bg_ok = false;}
+                        if colors::BLACK == col { bg_ok = false; }
                     }
                     if bg_ok { dm.set_bg(&scr_loc, background); }
                     }
@@ -364,5 +375,32 @@ impl World {
             };
         }
         return None;
+    }
+
+    // return value is a PC
+    pub fn new_game(&mut self) -> r_Actor {
+        // \todo should be loading these tile configurations (possibly if not already loaded)
+        let _t_air = self.new_terrain("air", Ok(CharSpec{img:' ', c:None}), true, true);  // \todo but will not support weight!
+        let _t_floor = self.new_terrain("floor", Ok(CharSpec{img:'.', c:Some(colors::BRASS)}), true, true); // wooden?
+        let _t_grass = self.new_terrain("grass", Ok(CharSpec{img:'.', c:Some(colors::GREEN)}), true, true);
+        let _t_stone_floor = self.new_terrain("stone floor", Ok(CharSpec{img:'.', c:Some(colors::GREY)}), true, true);
+        let _t_wall = self.new_terrain("wall", Ok(CharSpec{img:'#', c:None}), true, true);
+
+        // \todo map generation
+        let mockup_map = self.new_map("Mock", [VIEW, VIEW], _t_grass);
+        {
+        let mut m = mockup_map.borrow_mut();
+        for x in 0..VIEW-1 {
+            m.set_terrain([VIEW_RADIUS,x], Rc::clone(&_t_floor));
+            m.set_terrain([x,VIEW_RADIUS], Rc::clone(&_t_stone_floor));
+        }
+        }
+
+        // \todo construct PC(s)
+        let camera_anchor = Location::new(&mockup_map, [0, 0]);
+        let player_model = self.new_actor_model("soldier", Ok(CharSpec{img:'s', c:None}));
+        let player = self.new_actor(player_model.clone(), &camera_anchor, [VIEW_RADIUS, VIEW_RADIUS]).unwrap();
+        player.borrow_mut().is_pc = true;
+        return player;
     }
 }

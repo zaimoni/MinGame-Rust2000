@@ -1,6 +1,5 @@
 mod isk;
 
-use tcod::colors;
 use tcod::console::Root;
 use crate::isk::*;
 use crate::isk::gps::*;
@@ -79,16 +78,7 @@ fn handle_events_pc(r: &mut Root, w:&World, pc:&mut Actor) -> bool {
 fn main() {
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
     let mut world = World::new();
-
-    let t_air = world.new_terrain("air", Ok(CharSpec{img:' ', c:None}), true, true);  // \todo but will not support weight!
-    let t_floor = world.new_terrain("floor", Ok(CharSpec{img:'.', c:Some(colors::BRASS)}), true, true);
-    let t_wall = world.new_terrain("wall", Ok(CharSpec{img:'#', c:None}), true, true);
-
-    let mockup_map = world.new_map("Mock", [VIEW, VIEW]);
-    let camera_anchor = Location::new(&mockup_map, [0, 0]);
-    let player_model = world.new_actor_model("soldier", Ok(CharSpec{img:'s', c:None}));
-    let player = world.new_actor(player_model.clone(), &camera_anchor, [VIEW_RADIUS, VIEW_RADIUS]).unwrap();
-    player.borrow_mut().is_pc = true;
+    let player = world.new_game();
 
     while !dm.root.window_closed() {
         dm.clear();

@@ -10,10 +10,10 @@ use std::cell::RefCell;
 // at some point we'll want both a sidebar and a message bar
 pub const VIEW_RADIUS: i32 = 21;    // Cf. Cataclysm:Z, Rogue Survivor Revived
 pub const VIEW: i32 = 2*VIEW_RADIUS+1;
-pub const SIDEBAR_WIDTH: i32 = 37;
-pub const MESSAGE_BAR_HEIGHT: i32 = 7;
-pub const screen_width: i32 = VIEW+SIDEBAR_WIDTH;
-pub const screen_height: i32 = VIEW+MESSAGE_BAR_HEIGHT;
+const SIDEBAR_WIDTH: i32 = 37;
+const MESSAGE_BAR_HEIGHT: i32 = 7;
+const SCREEN_WIDTH: i32 = VIEW+SIDEBAR_WIDTH;
+const SCREEN_HEIGHT: i32 = VIEW+MESSAGE_BAR_HEIGHT;
 
 // these will need templating
 pub fn min(x:i32, y:i32) -> i32 {
@@ -41,6 +41,23 @@ pub struct ImgSpec {
 type TileSpec = Result<CharSpec, ImgSpec>;
 type BackgroundSpec = Result<colors::Color, ImgSpec>;
 
+pub struct Terrain {
+    pub name: String,
+    pub tile: TileSpec, // how it displays
+    pub bg: BackgroundSpec,
+    pub walkable: bool,
+    pub transparent: bool
+}
+type r_Terrain = Rc<Terrain>;
+
+impl Terrain {
+    pub fn new(_name: &str, _tile: TileSpec, _walkable:bool, _transparent:bool) -> Terrain {
+        return Terrain{name:_name.to_string(), tile:_tile, bg:Ok(colors::BLACK), walkable:_walkable, transparent:_transparent};
+    }
+
+    pub fn is_named(&self, _name:&str) -> bool { return self.name == _name; }
+}
+
 pub struct DisplayManager {
     pub root: Root,
     pub offscr: Offscreen,
@@ -49,8 +66,8 @@ pub struct DisplayManager {
 
 impl DisplayManager {
     pub fn new(name: &str, ft : &str) -> DisplayManager {
-        let root = Root::initializer().size(screen_width, screen_height).title(name).font(ft,FontLayout::Tcod).font_type(FontType::Greyscale).init();
-        let offscr = Offscreen::new(screen_width, screen_height);    // going to double-buffer at some point
+        let root = Root::initializer().size(SCREEN_WIDTH, SCREEN_HEIGHT).title(name).font(ft,FontLayout::Tcod).font_type(FontType::Greyscale).init();
+        let offscr = Offscreen::new(SCREEN_WIDTH, SCREEN_HEIGHT);    // going to double-buffer at some point
         return DisplayManager{root, offscr, last_fg:colors::WHITE};
     }
 
@@ -61,7 +78,7 @@ impl DisplayManager {
     }
 
     pub fn in_bounds(scr_loc: &[i32;2]) -> bool {
-        return 0<= scr_loc[0] && screen_width > scr_loc[0] && 0<= scr_loc[1] && screen_height > scr_loc[1];
+        return 0<= scr_loc[0] && SCREEN_WIDTH > scr_loc[0] && 0<= scr_loc[1] && SCREEN_HEIGHT > scr_loc[1];
     }
 
     // work around design decision to not have function overloading in Rust
@@ -98,7 +115,7 @@ impl DisplayManager {
     }
 
     pub fn render(&mut self) {
-        blit(&self.offscr, (0, 0), (screen_width, screen_height), &mut self.root, (0, 0), 1.0, 1.0);
+        blit(&self.offscr, (0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT), &mut self.root, (0, 0), 1.0, 1.0);
         self.root.flush();
     }
 }
@@ -107,8 +124,7 @@ pub struct ActorModel {
     pub name: String,
     pub tile: TileSpec
 }
-type r_ActorModel = Rc<RefCell<ActorModel>>;
-type w_ActorModel = Weak<RefCell<ActorModel>>;
+type r_ActorModel = Rc<ActorModel>;
 
 impl ActorModel {
     pub fn new(_name: &str, _tile:TileSpec) -> ActorModel {
@@ -131,17 +147,9 @@ impl ConsoleRenderable for Actor {
     fn fg(&self) -> TileSpec {
         if self.is_pc { return Ok(CharSpec{img:'@', c:None}); }
         else {
-            match self.model.try_borrow() {
-                Ok(m) => {
-                    match &m.tile {
-                        Ok(icon) => { return Ok((*icon).clone()); },
-                        Err(im) => { return Err((*im).clone()); }
-                    }
-                },
-                _ => {
-                    debug_assert!(false, "unsafe borrow");
-                    return Ok(CharSpec{img:'*', c:None}); // non-lethal failure in release mode
-                }
+            match &self.model.tile {
+                Ok(icon) => { return Ok(icon.clone()); },
+                Err(im) => { return Err(im.clone()); }
             }
         }
     }
@@ -160,8 +168,7 @@ pub struct MapObjectModel {
     pub name: String,
     pub tile: TileSpec
 }
-type r_MapObjectModel = Rc<RefCell<MapObjectModel>>;
-type w_MapObjectModel = Weak<RefCell<MapObjectModel>>;
+type r_MapObjectModel = Rc<MapObjectModel>;
 
 impl MapObjectModel {
     pub fn new(_name: &str, _tile:TileSpec) -> MapObjectModel {
@@ -179,17 +186,9 @@ type w_MapObject = Weak<RefCell<MapObject>>;
 impl ConsoleRenderable for MapObject {
     fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
     fn fg(&self) -> TileSpec {
-        match self.model.try_borrow() {
-            Ok(m) => {
-                match &m.tile {
-                    Ok(icon) => { return Ok((*icon).clone()); },
-                    Err(im) => { return Err((*im).clone()); }
-                }
-            },
-            _ => {
-                debug_assert!(false, "unsafe borrow");
-                return Ok(CharSpec{img:'*', c:None}); // non-lethal failure in release mode
-            }
+        match &self.model.tile {
+            Ok(icon) => { return Ok(icon.clone()); },
+            Err(im) => { return Err(im.clone()); }
         }
     }
     fn set_loc(&mut self, src:Location) -> () {
@@ -204,17 +203,18 @@ pub struct World {
 //  exits_one_way: ...  // ordered pairs of locations
 //  not clear how to do C++ static member variables; put these here rather than where they belong
     actor_types: Vec<r_ActorModel>,
-    obj_types: Vec<r_MapObjectModel>
+    obj_types: Vec<r_MapObjectModel>,
+    terrain_types: Vec<r_Terrain>
 }
 
 impl World {
     pub fn new() -> World {
-        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new()};
+        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new()};
     }
 
     pub fn new_map(&mut self, _name:&str, _dim: [i32;2]) -> r_Map {
         let ret = Rc::new(RefCell::new(Map::new(_name, _dim)));
-        self.atlas.push(ret.clone());
+        self.atlas.push(Rc::clone(&ret));
         return ret;
     }
 
@@ -228,21 +228,32 @@ impl World {
     }
 
     pub fn new_actor_model(&mut self, _name: &str, _tile:TileSpec) -> r_ActorModel {
-        let ret = Rc::new(RefCell::new(ActorModel::new(_name, _tile)));
-        self.actor_types.push(ret.clone());
+        let ret = Rc::new(ActorModel::new(_name, _tile));
+        self.actor_types.push(Rc::clone(&ret));
         return ret;
     }
 
     pub fn get_actor_model(&self, _name:&str) -> Option<r_ActorModel> {
-        for m in &self.actor_types {
-            if let Ok(a_type) = m.try_borrow() {
-                if a_type.is_named(_name) { return Some(m.clone()); };
-            }
+        for a_type in &self.actor_types {
+            if a_type.is_named(_name) { return Some(Rc::clone(&a_type)); };
         }
         return None;
     }
 
     // \todo map object model API
+
+    pub fn new_terrain(&mut self, _name: &str, _tile: TileSpec, _walkable:bool, _transparent:bool) -> r_Terrain {
+        let ret = Rc::new(Terrain::new(_name, _tile, _walkable, _transparent));
+        self.terrain_types.push(Rc::clone(&ret));
+        return ret;
+    }
+
+    pub fn get_terrain(&self, _name:&str) -> Option<r_Terrain> {
+        for a_type in &self.terrain_types {
+            if a_type.is_named(_name) { return Some(Rc::clone(&a_type)); };
+        }
+        return None;
+    }
 
     pub fn canonical_loc(&self, viewpoint:Location) -> Option<Location> {
         match viewpoint.map.try_borrow() {
@@ -331,15 +342,13 @@ impl World {
                     let mut bg_ok = true;
                     let background = m.bg(loc.pos);
                     if let Ok(col) = background {
-                        if (colors::BLACK == col) {bg_ok = false;}
+                        if colors::BLACK == col {bg_ok = false;}
                     }
-                    if (bg_ok) { dm.set_bg(&scr_loc, background); }
+                    if bg_ok { dm.set_bg(&scr_loc, background); }
                     }
                     let tiles = m.tiles(loc.pos);
                     if let Some(v) = tiles {
-                        for img in v {
-                            dm.draw(&scr_loc, img);
-                        }
+                        for img in v { dm.draw(&scr_loc, img); }
                     }
                 } else { continue; }    // not valid, just fail to update
             }

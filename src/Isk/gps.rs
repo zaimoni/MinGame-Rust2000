@@ -8,8 +8,8 @@ use std::cell::RefCell;
 pub struct Map {
     dim : [i32;2],
     name : String,
-    actors: Vec<r_ActorModel>,  // Rogue Survivor Revived needs this for turn ordering
-    objects: HashMap<Location,r_MapObjectModel>
+    actors: Vec<r_Actor>,  // Rogue Survivor Revived needs this for turn ordering
+    objects: HashMap<Location,r_MapObject>
 }
 pub type r_Map = Rc<RefCell<Map>>;   // simulates C# class or C++ std::shared_ptr
 pub type w_Map = Weak<RefCell<Map>>; // simulates C++ std::weak_ptr
@@ -26,10 +26,15 @@ impl Map {
         return Map{name:_name.to_string(), dim:_dim, actors:Vec::new(), objects:HashMap::new()};
     }
 
-    // accessor-likes
-    pub fn is_named(&self, x:&str) -> bool {
-        return self.name == x;
+    pub fn new_actor(&mut self, _model: r_ActorModel, _loc:Location) -> r_Actor {
+        // \todo enforce that the location is ours, at least for debug builds
+        let ret = Rc::new(RefCell::new(Actor::new(_model, _loc)));
+        self.actors.push(ret.clone());
+        return ret;
     }
+
+    // accessor-likes
+    pub fn is_named(&self, x:&str) -> bool { return self.name == x; }
 
     pub fn width(&self) -> i32 { return self.dim[0]; }
     pub fn height(&self) -> i32 { return self.dim[1]; }
@@ -50,6 +55,7 @@ impl Map {
     }
 }
 
+#[derive(Clone)]
 pub struct Location {
     pub map : r_Map,
     pub pos : [i32;2]

@@ -100,9 +100,11 @@ type r_ActorModel = Rc<RefCell<ActorModel>>;
 type w_ActorModel = Weak<RefCell<ActorModel>>;
 
 impl ActorModel {
-    fn new(_name: &str, _tile:TileSpec) -> ActorModel {
+    pub fn new(_name: &str, _tile:TileSpec) -> ActorModel {
         return ActorModel{name:_name.to_string(), tile:_tile};
     }
+
+    pub fn is_named(&self, _name:&str) -> bool { return self.name == _name; }
 }
 
 pub struct Actor {
@@ -110,6 +112,8 @@ pub struct Actor {
     pub model: r_ActorModel,
     my_loc: Location
 }
+type r_Actor = Rc<RefCell<Actor>>;
+type w_Actor = Weak<RefCell<Actor>>;
 
 impl ConsoleRenderable for Actor {
     fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
@@ -132,6 +136,12 @@ impl ConsoleRenderable for Actor {
     }
 }
 
+impl Actor {
+    pub fn new(_model: r_ActorModel, _loc: Location) -> Actor {
+        return Actor{model:_model, my_loc:_loc, is_pc:false};
+    }
+}
+
 pub struct MapObjectModel {
     pub name: String,
     pub tile: TileSpec
@@ -140,7 +150,7 @@ type r_MapObjectModel = Rc<RefCell<MapObjectModel>>;
 type w_MapObjectModel = Weak<RefCell<MapObjectModel>>;
 
 impl MapObjectModel {
-    fn new(_name: &str, _tile:TileSpec) -> MapObjectModel {
+    pub fn new(_name: &str, _tile:TileSpec) -> MapObjectModel {
         return MapObjectModel{name:_name.to_string(), tile:_tile};
     }
 }
@@ -149,6 +159,8 @@ pub struct MapObject {
     pub model: r_MapObjectModel,
     my_loc: Location
 }
+type r_MapObject = Rc<RefCell<MapObject>>;
+type w_MapObject = Weak<RefCell<MapObject>>;
 
 impl ConsoleRenderable for MapObject {
     fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
@@ -198,6 +210,23 @@ impl World {
         return None;
     }
 
+    pub fn new_actor_model(&mut self, _name: &str, _tile:TileSpec) -> r_ActorModel {
+        let ret = Rc::new(RefCell::new(ActorModel::new(_name, _tile)));
+        self.actor_types.push(ret.clone());
+        return ret;
+    }
+
+    pub fn get_actor_model(&self, _name:&str) -> Option<r_ActorModel> {
+        for m in &self.actor_types {
+            if let Ok(a_type) = m.try_borrow() {
+                if a_type.is_named(_name) { return Some(m.clone()); };
+            }
+        }
+        return None;
+    }
+
+    // \todo map object model API
+
     pub fn canonical_loc(&self, viewpoint:Location) -> Option<Location> {
         match viewpoint.map.try_borrow() {
             Ok(m) => {
@@ -222,7 +251,7 @@ impl World {
         return None;
     }
 
-    pub fn screen_to_loc(&self, src:[i32;2], topleft:Location) -> Option<Location> {
+    pub fn screen_to_loc(&self, src:[i32;2], topleft:&Location) -> Option<Location> {
         return self.canonical_loc(Location::new(&topleft.map, [topleft.pos[0]+src[0], topleft.pos[1]+src[1]]));
     }
 
@@ -232,5 +261,16 @@ impl World {
             Some(loc) => loc,
             _ => Location::new(&center.map, [0,0])
         }
+    }
+
+    pub fn new_actor(&mut self, _model: r_ActorModel, _camera:&Location, _pos:[i32;2]) -> Option<r_Actor> {
+        // \todo enforce that the location is ours, at least for debug builds
+        if let Some(loc) = self.screen_to_loc(_pos, _camera) {
+            match loc.map.try_borrow_mut() {
+                Ok(mut m) => Some(m.new_actor(_model, loc.clone())),
+                _ => None
+            };
+        }
+        return None;
     }
 }

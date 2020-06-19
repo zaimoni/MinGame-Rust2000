@@ -1,6 +1,6 @@
 use crate::isk::*;
 use tcod::colors;
-use std::ops::Add;
+use std::ops::{Add,AddAssign};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::rc::Weak;
@@ -47,11 +47,22 @@ impl Map {
     }
 
     // inappropriate UI functions
-    pub fn bg(_pt: [i32;2]) -> BackgroundSpec {
+    pub fn bg(&self, _pt: [i32;2]) -> BackgroundSpec {
         return Ok(colors::BLACK);
     }
 
-    pub fn tiles(_pt: [i32;2]) -> Option<Vec<TileSpec>> {
+    pub fn tiles(&self, _pt: [i32;2]) -> Option<Vec<TileSpec>> {
+        let mut ret = Vec::<TileSpec>::new();
+        // \todo check for map objects
+        // \todo check for inventory
+        for act in &self.actors {
+            if let Ok(a) = act.try_borrow() {
+                if _pt == a.loc().pos {
+                    ret.push(a.fg());
+                }
+            }
+        }
+        if !ret.is_empty() { return Some(ret); }
         return None;
     }
 }
@@ -67,6 +78,13 @@ impl Add<[i32;2]> for Location {
 
     fn add(self, delta:[i32;2]) -> Self::Output {
         return Location{map:self.map.clone(), pos:[self.pos[0]+delta[0], self.pos[1]+delta[1]]};
+    }
+}
+
+impl AddAssign<[i32;2]> for Location {
+    fn add_assign(&mut self, delta:[i32;2]) {
+        self.pos[0] += delta[0];
+        self.pos[1] += delta[1];
     }
 }
 

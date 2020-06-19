@@ -93,7 +93,8 @@ fn main() {
 
     while !dm.root.window_closed() {
         dm.clear();
-        dm.draw(&player.borrow().loc().pos, player.borrow().fg());
+        world.draw(&mut dm, player.borrow().loc()); // Not clear how to implement singletons in Rust,
+            // so can't keep World and DisplayManager mutually ignorant
         dm.render();
 
         // Handling user input

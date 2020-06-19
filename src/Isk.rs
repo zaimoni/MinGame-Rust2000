@@ -15,6 +15,17 @@ pub const MESSAGE_BAR_HEIGHT: i32 = 7;
 pub const screen_width: i32 = VIEW+SIDEBAR_WIDTH;
 pub const screen_height: i32 = VIEW+MESSAGE_BAR_HEIGHT;
 
+// these will need templating
+pub fn min(x:i32, y:i32) -> i32 {
+    if x < y { return x; }
+    return y;
+}
+
+pub fn max(x:i32, y:i32) -> i32 {
+    if x < y { return y; }
+    return x;
+}
+
 // since Rust intentionally does not have function overloading, we have to obfuscate other data structures to compensate
 #[derive(Clone)]
 pub struct CharSpec {
@@ -262,10 +273,76 @@ impl World {
     }
 
     pub fn loc_to_td_camera(&self, center:Location) -> Location {
-        let test = self.canonical_loc(Location::new(&center.map, [center.pos[0] - VIEW_RADIUS, center.pos[1] - VIEW_RADIUS]));
-        match test {
-            Some(loc) => return loc,
-            _ => return Location::new(&center.map, [0,0])
+        // \todo fix this to actually work
+        debug_assert!(center.map.borrow().in_bounds(center.pos));
+        let mut tl = center.clone()+[-VIEW_RADIUS, -VIEW_RADIUS];
+        let mut canon_tl = self.canonical_loc(tl.clone());
+        while let None = canon_tl {
+            if 0 > tl.pos[0] {
+                if 0 > tl.pos[1] {
+                    let ub = max(tl.pos[0], tl.pos[1]);
+                    tl += [-ub, -ub];
+                } else {
+                    tl.pos[0] = 0;
+                }
+            } else if 0 > tl.pos[1] {
+                tl.pos[1] = 0;
+            }
+            canon_tl = self.canonical_loc(tl.clone());
+        }
+        tl = canon_tl.unwrap();
+        if 0 >= tl.pos[0] && 0 >= tl.pos[1] { return tl; }
+
+        let mut br = center.clone()+[VIEW_RADIUS, VIEW_RADIUS];
+        let mut canon_br = self.canonical_loc(br.clone());
+        while let None = canon_br {
+            if 0 < tl.pos[0] {
+                let lb = min(tl.pos[0], br.pos[0]-br.map.borrow().width());
+                if 0 < lb {
+                    tl.pos[0] -= lb;
+                    br.pos[0] -= lb;
+                    canon_br = self.canonical_loc(br.clone());
+                    continue;
+                }
+            }
+            if 0 < tl.pos[1] {
+                let lb = min(tl.pos[1], br.pos[1]-br.map.borrow().height());
+                if 0 < lb {
+                    tl.pos[1] -= lb;
+                    br.pos[1] -= lb;
+                    canon_br = self.canonical_loc(br.clone());
+                    continue;
+                }
+            }
+            return tl;
+        }
+        return tl;
+    }
+
+    pub fn draw(&self, dm:&mut DisplayManager, viewpoint:Location) {
+        let camera = self.loc_to_td_camera(viewpoint);
+        for x in 0..VIEW-1 {
+            for y in 0..VIEW-1 {
+                let scr_loc = [x, y];
+                let src = self.canonical_loc(camera.clone()+[x,y]);
+                if let Some(loc) = src {
+                    let m = loc.map.borrow();
+                    {
+                    let mut bg_ok = true;
+                    let background = m.bg(loc.pos);
+                    if let Ok(col) = background {
+                        if (colors::BLACK == col) {bg_ok = false;}
+                    }
+                    if (bg_ok) { dm.set_bg(&scr_loc, background); }
+                    }
+                    let tiles = m.tiles(loc.pos);
+                    if let Some(v) = tiles {
+                        for img in v {
+                            dm.draw(&scr_loc, img);
+                        }
+                    }
+                } else { continue; }    // not valid, just fail to update
+            }
         }
     }
 

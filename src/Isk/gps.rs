@@ -1,5 +1,6 @@
 use crate::isk::*;
 use tcod::colors;
+use std::ops::Add;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::rc::Weak;
@@ -61,6 +62,14 @@ pub struct Location {
     pub pos : [i32;2]
 }
 
+impl Add<[i32;2]> for Location {
+    type Output = Location;
+
+    fn add(self, delta:[i32;2]) -> Self::Output {
+        return Location{map:self.map.clone(), pos:[self.pos[0]+delta[0], self.pos[1]+delta[1]]};
+    }
+}
+
 impl Location {
     pub fn new(m : &r_Map, p : [i32;2]) -> Location {
         return Location{map:m.clone(), pos:p};
@@ -73,5 +82,6 @@ pub trait ConsoleRenderable {
     // C++ reference-return signatures are not practical; we are required to spam the garbage collector, much like C#.
     // r_fg(&self) -> &TileSpec ends up routing through a C++ std::shared simulation; this correctly compile-errors.
     // r_loc(&self) -> &Location might be repairable w/lifetime specifiers, but the compiler errors are not clear about that.
+    fn set_loc(&mut self, src:Location) -> ();  // likely should be ! but that's experimental
 }
 

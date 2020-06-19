@@ -134,6 +134,9 @@ impl ConsoleRenderable for Actor {
             }
         }
     }
+    fn set_loc(&mut self, src:Location) -> () {
+        self.my_loc = src;
+    }
 }
 
 impl Actor {
@@ -177,6 +180,9 @@ impl ConsoleRenderable for MapObject {
                 return Ok(CharSpec{img:'*', c:None}); // non-lethal failure in release mode
             }
         }
+    }
+    fn set_loc(&mut self, src:Location) -> () {
+        self.my_loc = src;
     }
 }
 
@@ -258,8 +264,8 @@ impl World {
     pub fn loc_to_td_camera(&self, center:Location) -> Location {
         let test = self.canonical_loc(Location::new(&center.map, [center.pos[0] - VIEW_RADIUS, center.pos[1] - VIEW_RADIUS]));
         match test {
-            Some(loc) => loc,
-            _ => Location::new(&center.map, [0,0])
+            Some(loc) => return loc,
+            _ => return Location::new(&center.map, [0,0])
         }
     }
 
@@ -267,8 +273,8 @@ impl World {
         // \todo enforce that the location is ours, at least for debug builds
         if let Some(loc) = self.screen_to_loc(_pos, _camera) {
             match loc.map.try_borrow_mut() {
-                Ok(mut m) => Some(m.new_actor(_model, loc.clone())),
-                _ => None
+                Ok(mut m) => return Some(m.new_actor(_model, loc.clone())),
+                _ => return None
             };
         }
         return None;

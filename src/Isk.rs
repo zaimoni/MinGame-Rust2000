@@ -329,36 +329,28 @@ impl World {
         tl = canon_tl.unwrap();
         if 0 >= tl.pos[0] && 0 >= tl.pos[1] { return tl; }
 
-        let mut br = center.clone()+[VIEW_RADIUS, VIEW_RADIUS];
-        let mut canon_br = self.canonical_loc(br.clone());
-        while let None = canon_br {
-            if 0 < tl.pos[0] {
-                let lb = min(tl.pos[0], br.pos[0]-br.map.borrow().width_i32());
-                if 0 < lb {
-                    tl.pos[0] -= lb;
-                    br.pos[0] -= lb;
-                    canon_br = self.canonical_loc(br.clone());
-                    continue;
-                }
+        if 0 < tl.pos[0] {
+            let mut test = tl.clone()+[2*VIEW_RADIUS, 0];
+            if let None = self.canonical_loc(test.clone()) {
+                let lb = min(tl.pos[0], test.pos[0]-(test.map.borrow().width_i32()-1));
+                if 0 < lb { tl.pos[0] -= lb; }
             }
-            if 0 < tl.pos[1] {
-                let lb = min(tl.pos[1], br.pos[1]-br.map.borrow().height_i32());
-                if 0 < lb {
-                    tl.pos[1] -= lb;
-                    br.pos[1] -= lb;
-                    canon_br = self.canonical_loc(br.clone());
-                    continue;
-                }
+        }
+
+        if 0 < tl.pos[1] {
+            let mut test = tl.clone()+[0, 2*VIEW_RADIUS];
+            if let None = self.canonical_loc(test.clone()) {
+                let lb = min(tl.pos[1], test.pos[1]-(test.map.borrow().height_i32()-1));
+                if 0 < lb { tl.pos[1] -= lb; }
             }
-            return tl;
         }
         return tl;
     }
 
     pub fn draw(&self, dm:&mut DisplayManager, viewpoint:Location) {
         let camera = self.loc_to_td_camera(viewpoint);
-        for x in 0..VIEW-1 {
-            for y in 0..VIEW-1 {
+        for x in 0..VIEW {
+            for y in 0..VIEW {
                 let scr_loc = [x, y];
                 let src = self.canonical_loc(camera.clone()+[x,y]);
                 if let Some(loc) = src {
@@ -378,6 +370,10 @@ impl World {
                 } else { continue; }    // not valid, just fail to update
             }
         }
+        // tracers so we can see what is going on
+        let fake_wall = Ok(CharSpec{img:'#', c:Some(colors::WHITE)});
+        for z in VIEW..SCREEN_HEIGHT { dm.draw(&[0,z], fake_wall.clone());};    // likely bad signature for dm.draw
+        for z in VIEW..SCREEN_WIDTH { dm. draw(&[z, VIEW-1], fake_wall.clone());};
     }
 
     pub fn new_actor(&mut self, _model: r_ActorModel, _camera:&Location, _pos:[i32;2]) -> Option<r_Actor> {
@@ -400,22 +396,67 @@ impl World {
         let _t_stone_floor = self.new_terrain("stone floor", Ok(CharSpec{img:'.', c:Some(colors::GREY)}), true, true);
         let _t_wall = self.new_terrain("wall", Ok(CharSpec{img:'#', c:None}), true, true);
 
-        // \todo map generation
-        let mockup_map = self.new_map("Mock", [VIEW, VIEW], _t_grass);
-        {
-        let mut m = mockup_map.borrow_mut();
-        for x in 0..VIEW-1 {
-            m.set_terrain([VIEW_RADIUS,x], Rc::clone(&_t_floor));
-            m.set_terrain([x,VIEW_RADIUS], Rc::clone(&_t_stone_floor));
-        }
-        }
-
         // final architecture...
         // scale: 10' passage is 3 cells wide (allows centering doors properly)
         // template parts:
         // * corridor (3-wide floor, 1-wide wall)
         // * small tower floor: 6x6 floor; might want to clip corners
         // * stairwell: floor 2x3; several flavors w/involuntary exits
+        // the NW tower is the only one that needs correct coordinates initially.
+        let mut _tower_nw = MapRect::new(Rect::new([6,6],[8,8]),Rc::clone(&_t_stone_floor), Rc::clone(&_t_wall));
+        let mut _tower_ne = _tower_nw.clone();
+        let mut _tower_se = _tower_nw.clone();
+        let mut _tower_sw = _tower_nw.clone();
+        _tower_nw.set_wallcode(1,2,2,1);
+        _tower_ne.set_wallcode(1,1,2,2);
+        _tower_se.set_wallcode(2,1,1,2);
+        _tower_sw.set_wallcode(2,2,1,1);
+        let mut _inner_n = MapRect::new(Rect::new([5,5],[21,5]),Rc::clone(&_t_stone_floor), Rc::clone(&_t_wall));
+        _inner_n.set_wallcode(1,0,1,0);
+        let mut _inner_e = MapRect::new(Rect::new([5,5],[5,21]),Rc::clone(&_t_stone_floor), Rc::clone(&_t_wall));
+        _inner_e.set_wallcode(0,1,0,1);
+        let mut _inner_w = _inner_e.clone();
+        let mut _inner_sw = MapRect::new(Rect::new([5,5],[9,5]),Rc::clone(&_t_stone_floor), Rc::clone(&_t_wall));
+        let mut _inner_se = _inner_sw.clone();
+        _inner_sw.set_wallcode(1,1,1,0);
+        _inner_se.set_wallcode(1,0,1,1);
+
+        // align the castle components
+        _inner_n.rect.align_to(Compass::NW, &_tower_nw.rect,Compass::NE);
+        _tower_ne.rect.align_to(Compass::NW, &_inner_n.rect,Compass::NE);
+        let s_delta = <[i32;2]>::from(Compass::S);
+        _inner_n.rect += s_delta;
+        _inner_n.rect += s_delta;
+
+        _inner_w.rect.align_to(Compass::NW, &_tower_nw.rect,Compass::SW);
+        _tower_sw.rect.align_to(Compass::NW, &_inner_w.rect,Compass::SW);
+        let e_delta = <[i32;2]>::from(Compass::E);
+        _inner_w.rect += e_delta;
+        _inner_w.rect += e_delta;
+
+        _inner_e.rect.align_to(Compass::NE, &_tower_ne.rect,Compass::SE);
+        _tower_se.rect.align_to(Compass::NE, &_inner_e.rect,Compass::SE);
+        let w_delta = <[i32;2]>::from(Compass::W);
+        _inner_e.rect += w_delta;
+        _inner_e.rect += w_delta;
+
+        _inner_sw.rect.align_to(Compass::SW, &_tower_sw.rect,Compass::SE);
+        _inner_se.rect.align_to(Compass::SE, &_tower_se.rect,Compass::SW);
+        let n_delta = <[i32;2]>::from(Compass::N);
+        _inner_sw.rect += n_delta;
+        _inner_sw.rect += n_delta;
+        _inner_se.rect += n_delta;
+        _inner_se.rect += n_delta;
+
+        // \todo map generation
+        let mockup_map = self.new_map("Mock", [VIEW, VIEW], _t_grass);
+        {
+        let mut m = mockup_map.borrow_mut();
+        for x in 0..VIEW {
+            m.set_terrain([VIEW_RADIUS,x], Rc::clone(&_t_floor));
+            m.set_terrain([x,VIEW_RADIUS], Rc::clone(&_t_stone_floor));
+        }
+        }
 
         // \todo construct PC(s)
         let camera_anchor = Location::new(&mockup_map, [0, 0]);

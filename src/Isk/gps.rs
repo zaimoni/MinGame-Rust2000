@@ -33,6 +33,21 @@ impl From<Compass> for i32 {
     }
 }
 
+impl From<Compass> for [i32;2] {
+    fn from(src: Compass) -> [i32;2] {
+        match src {
+            Compass::N => { return [0, -1]; },
+            Compass::NE => { return [1, -1]; },
+            Compass::E => { return [1, 0]; },
+            Compass::SE => { return [1, 1]; },
+            Compass::S => { return [0, 1]; },
+            Compass::SW => { return [-1, 1]; },
+            Compass::W => { return [-1, 0]; },
+            Compass::NW => { return [-1, -1]; },
+        }
+    }
+}
+
 impl TryFrom<i32> for Compass {
     type Error = Error;
 
@@ -126,21 +141,21 @@ impl Rect {
                 Rect::cross_subassign(&mut ret[0], &mut delta);
             },
             Compass::NE => {
-                let mut delta = self._dim[0]-1;
+                let mut delta = self._dim[0];
                 Rect::cross_subassign(&mut ret[0], &mut delta);
             },
             Compass::E => {
-                let mut delta = [self._dim[0]-1, self._dim[1]/2];
+                let mut delta = [self._dim[0], self._dim[1]/2];
                 Rect::cross_subassign(&mut ret[0], &mut delta[0]);
                 Rect::cross_subassign(&mut ret[1], &mut delta[1]);
             },
             Compass::SE => {
-                let mut delta = [self._dim[0]-1, self._dim[1]-1];
+                let mut delta = [self._dim[0], self._dim[1]-1];
                 Rect::cross_subassign(&mut ret[0], &mut delta[0]);
                 Rect::cross_subassign(&mut ret[1], &mut delta[1]);
             },
             Compass::S => {
-                let mut delta = [self._dim[0]/2, self._dim[1]-1];
+                let mut delta = [self._dim[0]/2, self._dim[1]];
                 Rect::cross_subassign(&mut ret[0], &mut delta[0]);
                 Rect::cross_subassign(&mut ret[1], &mut delta[1]);
             },
@@ -165,15 +180,15 @@ impl Rect {
 
 #[derive(Clone)]
 pub struct MapRect {
-    _rect: Rect,
+    pub rect: Rect,
     _floor: r_Terrain,
     _wall: r_Terrain,
     _wallcode: u8
 }
 
 impl MapRect {
-    pub fn new(rect:Rect, floor:r_Terrain, wall:r_Terrain) -> MapRect {
-        return MapRect{_rect:rect, _floor:floor, _wall:wall, _wallcode:0};
+    pub fn new(_rect:Rect, floor:r_Terrain, wall:r_Terrain) -> MapRect {
+        return MapRect{rect:_rect, _floor:floor, _wall:wall, _wallcode:0};
     }
 
     // 0: none, 1: solid, 2: floor in center (e.g., where a door might go later)

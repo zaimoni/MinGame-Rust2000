@@ -6,6 +6,59 @@ use std::rc::Rc;
 use std::rc::Weak;
 use std::cell::RefCell;
 
+pub enum Compass {  // XCOM-like compass directions
+    N,
+    NE,
+    E,
+    SE,
+    S,
+    SW,
+    W,
+    NW
+}
+
+impl From<Compass> for i32 {
+    fn from(src: Compass) -> i32 {
+        match src {
+            Compass::N => { return 0; },
+            Compass::NE => { return 1; },
+            Compass::E => { return 2; },
+            Compass::SE => { return 3; },
+            Compass::S => { return 4; },
+            Compass::SW => { return 5; },
+            Compass::W => { return 6; },
+            Compass::NW => { return 7; },
+        }
+    }
+}
+
+/*
+impl TryFrom<i32> for Compass {
+    type Error = std::num::TryFromIntError; // doesn't work
+
+    fn try_from(src:i32) -> Result<Compass,Self::Error> {
+        match src {
+            0 => { return Ok(Compass::N); },
+            1 => { return Ok(Compass::NE); },
+            2 => { return Ok(Compass::E); },
+            3 => { return Ok(Compass::SE); },
+            4 => { return Ok(Compass::S); },
+            5 => { return Ok(Compass::SW); },
+            6 => { return Ok(Compass::W); },
+            7 => { return Ok(Compass::NW); },
+            _ => { return Err(std::num::TryFromIntError); }
+        }
+    }
+}
+*/
+
+pub struct MapRect {
+    origin: [i32;2],
+    dim: [usize;2],
+    floor: r_Terrain,
+    wall: r_Terrain
+}
+
 pub struct Map {
     dim : [usize;2],
     name : String,

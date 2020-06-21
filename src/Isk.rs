@@ -211,7 +211,7 @@ pub struct World {
     atlas : Vec<r_Map>,
 //  offset: ... // (C++: std::map<std::pair<std::shared_ptr<Map>,std::shared_ptr<Map>>,[i32;2]>)
 //  exits: ... // unordered pairs of locations
-//  exits_one_way: ...  // ordered pairs of locations
+//  exits_one_way: ...  // ordered pairs of locations; falling would be damaging
 //  not clear how to do C++ static member variables; put these here rather than where they belong
     actor_types: Vec<r_ActorModel>,
     obj_types: Vec<r_MapObjectModel>,
@@ -395,6 +395,13 @@ impl World {
             m.set_terrain([x,VIEW_RADIUS], Rc::clone(&_t_stone_floor));
         }
         }
+
+        // final architecture...
+        // scale: 10' passage is 3 cells wide (allows centering doors properly)
+        // template parts:
+        // * corridor (3-wide floor, 1-wide wall)
+        // * small tower floor: 6x6 floor; might want to clip corners
+        // * stairwell: floor 2x3; several flavors w/involuntary exits
 
         // \todo construct PC(s)
         let camera_anchor = Location::new(&mockup_map, [0, 0]);

@@ -34,7 +34,7 @@ impl From<Compass> for i32 {
 }
 
 impl TryFrom<i32> for Compass {
-    type Error = Error; // doesn't work
+    type Error = Error;
 
     fn try_from(src:i32) -> Result<Compass,Self::Error> {
         match src {
@@ -55,6 +55,20 @@ impl TryFrom<i32> for Compass {
 pub struct Rect {
     _origin: [i32;2],
     _dim: [usize;2]
+}
+
+impl AddAssign<[i32;2]> for Rect {
+    fn add_assign(&mut self, src: [i32;2]) {
+        self._origin[0] = src[0];
+        self._origin[1] = src[1];
+    }
+}
+
+impl AddAssign<&[i32;2]> for Rect {
+    fn add_assign(&mut self, src: &[i32;2]) {
+        self._origin[0] = (*src)[0];
+        self._origin[1] = (*src)[1];
+    }
 }
 
 impl Rect {
@@ -141,6 +155,11 @@ impl Rect {
             Compass::NW => {}   // no-op
         }
         return ret;
+    }
+    pub fn align_to(&mut self, my_dir:Compass, other:&Rect, other_dir:Compass) {
+        let my_guess = self.anchor(my_dir);
+        let other_anchor = other.anchor(other_dir);
+        *self += [other_anchor[0]-my_guess[0], other_anchor[1]-my_guess[1]];
     }
 }
 
@@ -278,6 +297,13 @@ impl AddAssign<[i32;2]> for Location {
     fn add_assign(&mut self, delta:[i32;2]) {
         self.pos[0] += delta[0];
         self.pos[1] += delta[1];
+    }
+}
+
+impl AddAssign<&[i32;2]> for Location {
+    fn add_assign(&mut self, delta:&[i32;2]) {
+        self.pos[0] += (*delta)[0];
+        self.pos[1] += (*delta)[1];
     }
 }
 

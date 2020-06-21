@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::rc::Weak;
 use std::cell::RefCell;
 
+#[derive(Clone,PartialEq,Eq)]
 pub enum Compass {  // XCOM-like compass directions
     N,
     NE,
@@ -102,12 +103,81 @@ impl Rect {
         Rect::cross_subassign(&mut ret[1], &mut delta[1]);
         return ret;
     }
+
+    pub fn anchor(&self, dir:Compass) -> [i32;2] {
+        let mut ret = self._origin.clone();
+        match dir {
+            Compass::N => {
+                let mut delta = self._dim[0]/2;
+                Rect::cross_subassign(&mut ret[0], &mut delta);
+            },
+            Compass::NE => {
+                let mut delta = self._dim[0]-1;
+                Rect::cross_subassign(&mut ret[0], &mut delta);
+            },
+            Compass::E => {
+                let mut delta = [self._dim[0]-1, self._dim[1]/2];
+                Rect::cross_subassign(&mut ret[0], &mut delta[0]);
+                Rect::cross_subassign(&mut ret[1], &mut delta[1]);
+            },
+            Compass::SE => {
+                let mut delta = [self._dim[0]-1, self._dim[1]-1];
+                Rect::cross_subassign(&mut ret[0], &mut delta[0]);
+                Rect::cross_subassign(&mut ret[1], &mut delta[1]);
+            },
+            Compass::S => {
+                let mut delta = [self._dim[0]/2, self._dim[1]-1];
+                Rect::cross_subassign(&mut ret[0], &mut delta[0]);
+                Rect::cross_subassign(&mut ret[1], &mut delta[1]);
+            },
+            Compass::SW => {
+                let mut delta = self._dim[1];
+                Rect::cross_subassign(&mut ret[1], &mut delta);
+            },
+            Compass::W => {
+                let mut delta = self._dim[1]/2;
+                Rect::cross_subassign(&mut ret[1], &mut delta);
+            },
+            Compass::NW => {}   // no-op
+        }
+        return ret;
+    }
 }
 
+#[derive(Clone)]
 pub struct MapRect {
-    rect: Rect,
-    floor: r_Terrain,
-    wall: r_Terrain
+    _rect: Rect,
+    _floor: r_Terrain,
+    _wall: r_Terrain,
+    _wallcode: u8
+}
+
+impl MapRect {
+    pub fn new(rect:Rect, floor:r_Terrain, wall:r_Terrain) -> MapRect {
+        return MapRect{_rect:rect, _floor:floor, _wall:wall, _wallcode:0};
+    }
+
+    // 0: none, 1: solid, 2: floor in center (e.g., where a door might go later)
+    pub fn set_wallcode(&mut self, n:u8, e:u8, s:u8, w:u8) {
+        debug_assert!(3 > n);
+        debug_assert!(3 > e);
+        debug_assert!(3 > s);
+        debug_assert!(3 > w);
+        self._wallcode = n + 3*e + 9*s + 27*w;
+    }
+
+    pub fn read_wallcode(&self, dir:Compass) -> u8 {
+        match dir {
+            Compass::N => { return self._wallcode%3; },
+            Compass::E => { return (self._wallcode/3)%3; },
+            Compass::S => { return (self._wallcode/9)%3; },
+            Compass::W => { return (self._wallcode/27)%3; },
+            _ => {
+                debug_assert!(false, "invalid direction for reading wall code");
+                return 0;
+            }
+        }
+    }
 }
 
 pub struct Map {

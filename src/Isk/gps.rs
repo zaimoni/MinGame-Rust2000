@@ -32,9 +32,8 @@ impl From<Compass> for i32 {
     }
 }
 
-/*
 impl TryFrom<i32> for Compass {
-    type Error = std::num::TryFromIntError; // doesn't work
+    type Error = Error; // doesn't work
 
     fn try_from(src:i32) -> Result<Compass,Self::Error> {
         match src {
@@ -46,15 +45,67 @@ impl TryFrom<i32> for Compass {
             5 => { return Ok(Compass::SW); },
             6 => { return Ok(Compass::W); },
             7 => { return Ok(Compass::NW); },
-            _ => { return Err(std::num::TryFromIntError); }
+            _ => { return Err(Error{desc:"out of range; try %8 before converting to Compass".to_string()}); }
         }
     }
 }
-*/
+
+#[derive(Clone,PartialEq,Eq)]
+pub struct Rect {
+    _origin: [i32;2],
+    _dim: [usize;2]
+}
+
+impl Rect {
+    fn cross_subassign(lhs:&mut i32, rhs:&mut usize) {
+        if 0 < *rhs {
+            if 0 > *lhs {    // prevent working with i32::MIN
+                *lhs += 1;
+                *rhs += 1;
+            }
+            if 0 > *lhs {
+                let test = usize::try_from(-*lhs).unwrap();  // not really...i32::MIN overflows
+                if test > *rhs {
+                    *lhs += i32::try_from(*rhs).unwrap();
+                    *rhs = 0;
+                    return;
+                }
+                *rhs -= test;
+                *lhs = 0;
+            }
+            if i32::MAX > *lhs {
+                let tolerance = i32::MAX - *lhs;
+                let test = i32::try_from(*rhs);
+                if let Ok(val) = test {
+                    if tolerance >= val {
+                        *lhs += val;
+                        *rhs = 0;
+                        return;
+                    } else {
+                        *rhs -= usize::try_from(tolerance).unwrap();
+                        *lhs = i32::MAX;
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn new(o:[i32;2], d:[usize;2]) -> Rect {
+        return Rect{_origin:o, _dim:d};
+    }
+
+    pub fn center(&self) -> [i32;2] {
+        let mut delta = [self._dim[0]/2, self._dim[1]/2];
+        let mut ret = self._origin.clone();
+        Rect::cross_subassign(&mut ret[0], &mut delta[0]);
+        Rect::cross_subassign(&mut ret[1], &mut delta[1]);
+        return ret;
+    }
+}
 
 pub struct MapRect {
-    origin: [i32;2],
-    dim: [usize;2],
+    rect: Rect,
     floor: r_Terrain,
     wall: r_Terrain
 }

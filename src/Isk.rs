@@ -15,6 +15,20 @@ const MESSAGE_BAR_HEIGHT: i32 = 7;
 const SCREEN_WIDTH: i32 = VIEW+SIDEBAR_WIDTH;
 const SCREEN_HEIGHT: i32 = VIEW+MESSAGE_BAR_HEIGHT;
 
+// not possible to reuse Rust STD library types for our own errors
+// modeled on std::num::TryFromIntError
+#[derive(Clone,Debug,PartialEq,Eq)]
+pub struct Error {
+    pub desc: String
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error>
+    {
+        return write!(f, "{}", self.desc);
+    }
+}
+
 // these will need templating
 pub fn min(x:i32, y:i32) -> i32 {
     if x < y { return x; }

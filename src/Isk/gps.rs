@@ -266,6 +266,14 @@ impl Map {
         let dest = Map::usize_cast(pt);
         self.terrain[dest[0]+dest[1]*self.dim[0]] = src;
     }
+    pub fn is_walkable_for(&self, pt:&[i32;2], _who:&Actor) -> bool {
+        debug_assert!(self.in_bounds(*pt));
+        let dest = Map::usize_cast(*pt);
+        if !self.terrain[dest[0]+dest[1]*self.dim[0]].walkable { return false; }    // a ghost (or hologram) might disagree, but non-issue here
+        // \todo don't move into another Actor (could be done elsewhere)
+        // \todo check for map objects
+        return true;
+    }
 
     // inappropriate UI functions
     pub fn bg(&self, pt: [usize;2]) -> BackgroundSpec {
@@ -368,6 +376,8 @@ impl Location {
     pub fn new(m : &r_Map, p : [i32;2]) -> Location {
         return Location{map:m.clone(), pos:p};
     }
+
+    pub fn is_walkable_for(&self, who:&Actor) -> bool { return self.map.borrow().is_walkable_for(&self.pos, who); }
 }
 
 pub trait ConsoleRenderable {

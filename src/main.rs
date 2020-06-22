@@ -65,11 +65,13 @@ fn handle_events_pc(r: &mut Root, w:&World, pc:&mut Actor) -> bool {
         _ => { return false; }
     }
     if let Some(loc) = next_loc {
-        // \todo this is where "legal to enter check" would happen
-        if !Rc::ptr_eq(&loc.map,&cur_loc.map) {
-            // transfer between owning maps
-        }
-        pc.set_loc(loc);
+        // \todo process bump moving
+        if loc.is_walkable_for(pc) {
+            if !Rc::ptr_eq(&loc.map,&cur_loc.map) {
+                // transfer between owning maps
+            }
+            pc.set_loc(loc);
+        } // else {} // \todo error message
     } // else {} // \todo error message
 
     return false;

@@ -378,7 +378,6 @@ impl World {
             dm.draw(&[i, VIEW - 1], Ok(CharSpec{img:c, c:Some(colors::WHITE)}));
             i += 1;
         }
-//        for z in VIEW..SCREEN_WIDTH { dm.draw(&[z, VIEW-1], fake_wall.clone());};
     }
 
     pub fn new_actor(&mut self, _model: r_ActorModel, _camera:&Location, _pos:[i32;2]) -> Option<r_Actor> {
@@ -399,7 +398,7 @@ impl World {
         let _t_floor = self.new_terrain("floor", Ok(CharSpec{img:'.', c:Some(colors::BRASS)}), true, true); // wooden?
         let _t_grass = self.new_terrain("grass", Ok(CharSpec{img:'.', c:Some(colors::GREEN)}), true, true);
         let _t_stone_floor = self.new_terrain("stone floor", Ok(CharSpec{img:'.', c:Some(colors::GREY)}), true, true);
-        let _t_wall = self.new_terrain("wall", Ok(CharSpec{img:'#', c:Some(colors::GREY)}), true, true);
+        let _t_wall = self.new_terrain("wall", Ok(CharSpec{img:'#', c:Some(colors::GREY)}), false, false);
 
         // final architecture...
         // scale: 10' passage is 3 cells wide (allows centering doors properly)

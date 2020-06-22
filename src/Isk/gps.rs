@@ -66,7 +66,7 @@ impl TryFrom<i32> for Compass {
     }
 }
 
-#[derive(Clone,PartialEq,Eq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct Rect {
     _origin: [i32;2],
     _dim: [usize;2]
@@ -74,15 +74,15 @@ pub struct Rect {
 
 impl AddAssign<[i32;2]> for Rect {
     fn add_assign(&mut self, src: [i32;2]) {
-        self._origin[0] = src[0];
-        self._origin[1] = src[1];
+        self._origin[0] += src[0];
+        self._origin[1] += src[1];
     }
 }
 
 impl AddAssign<&[i32;2]> for Rect {
     fn add_assign(&mut self, src: &[i32;2]) {
-        self._origin[0] = (*src)[0];
-        self._origin[1] = (*src)[1];
+        self._origin[0] += (*src)[0];
+        self._origin[1] += (*src)[1];
     }
 }
 
@@ -150,7 +150,7 @@ impl Rect {
                 Rect::cross_subassign(&mut ret[1], &mut delta[1]);
             },
             Compass::SE => {
-                let mut delta = [self._dim[0], self._dim[1]-1];
+                let mut delta = [self._dim[0], self._dim[1]];
                 Rect::cross_subassign(&mut ret[0], &mut delta[0]);
                 Rect::cross_subassign(&mut ret[1], &mut delta[1]);
             },
@@ -250,6 +250,7 @@ impl Map {
 
     // accessor-likes
     pub fn is_named(&self, x:&str) -> bool { return self.name == x; }
+    pub fn named(&self) -> String { return self.name.clone(); }
 
     pub fn width(&self) -> usize { return self.dim[0]; }
     pub fn height(&self) -> usize { return self.dim[1]; }
@@ -291,6 +292,47 @@ impl Map {
         }
         if !ret.is_empty() { return Some(ret); }
         return None;
+    }
+}
+
+impl MapRect {
+    pub fn draw(&self, m:&mut Map) {
+        let n_code = self.read_wallcode(Compass::N);
+        let e_code = self.read_wallcode(Compass::E);
+        let s_code = self.read_wallcode(Compass::S);
+        let w_code = self.read_wallcode(Compass::W);
+        let mid_pt = self.rect.center();
+        let nw_pt = self.rect.anchor(Compass::NW);
+        let se_pt = self.rect.anchor(Compass::SE);
+        for x in nw_pt[0]..se_pt[0] {
+            let mut pre_paint = Rc::clone(&self._floor);
+            let mid_x_test = mid_pt[0] == x;
+            let mut mid_y_test = false;
+            if nw_pt[0] == x {
+                if 1 <= w_code {
+                    pre_paint = Rc::clone(&self._wall);
+                    if 2 == w_code { mid_y_test = true; }
+                }
+            } else if se_pt[0]-1 == x {
+                if 1 <= e_code {
+                    pre_paint = Rc::clone(&self._wall);
+                    if 2 == e_code { mid_y_test = true; }
+                }
+            }
+            for y in nw_pt[1]..se_pt[1] {
+                let mut paint = Rc::clone(&pre_paint);
+                if nw_pt[1] == y {
+                    if 1 <= n_code {
+                        if !mid_x_test || 1==n_code { paint = Rc::clone(&self._wall); }
+                    }
+                } else if se_pt[1]-1 == y {
+                    if 1 <= s_code {
+                        if !mid_x_test || 1==s_code { paint = Rc::clone(&self._wall); }
+                    }
+                } else if mid_y_test && mid_pt[1] == y { paint = Rc::clone(&self._floor); }
+                m.set_terrain([x,y], paint);
+            }
+        }
     }
 }
 

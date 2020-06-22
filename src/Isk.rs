@@ -308,8 +308,7 @@ impl World {
         return self.canonical_loc(Location::new(&topleft.map, [topleft.pos[0]+src[0], topleft.pos[1]+src[1]]));
     }
 
-    pub fn loc_to_td_camera(&self, center:Location) -> Location {
-        // \todo fix this to actually work
+    pub fn loc_to_td_camera(&self, center:Location) -> Location {   // tries to keep whole map on screen
         debug_assert!(center.map.borrow().in_bounds(center.pos));
         let mut tl = center.clone()+[-VIEW_RADIUS, -VIEW_RADIUS];
         let mut canon_tl = self.canonical_loc(tl.clone());
@@ -330,7 +329,7 @@ impl World {
         if 0 >= tl.pos[0] && 0 >= tl.pos[1] { return tl; }
 
         if 0 < tl.pos[0] {
-            let mut test = tl.clone()+[2*VIEW_RADIUS, 0];
+            let test = tl.clone()+[2*VIEW_RADIUS, 0];
             if let None = self.canonical_loc(test.clone()) {
                 let lb = min(tl.pos[0], test.pos[0]-(test.map.borrow().width_i32()-1));
                 if 0 < lb { tl.pos[0] -= lb; }
@@ -338,7 +337,7 @@ impl World {
         }
 
         if 0 < tl.pos[1] {
-            let mut test = tl.clone()+[0, 2*VIEW_RADIUS];
+            let test = tl.clone()+[0, 2*VIEW_RADIUS];
             if let None = self.canonical_loc(test.clone()) {
                 let lb = min(tl.pos[1], test.pos[1]-(test.map.borrow().height_i32()-1));
                 if 0 < lb { tl.pos[1] -= lb; }
@@ -348,6 +347,7 @@ impl World {
     }
 
     pub fn draw(&self, dm:&mut DisplayManager, viewpoint:Location) {
+        let n = viewpoint.map.borrow().named();
         let camera = self.loc_to_td_camera(viewpoint);
         for x in 0..VIEW {
             for y in 0..VIEW {
@@ -373,7 +373,12 @@ impl World {
         // tracers so we can see what is going on
         let fake_wall = Ok(CharSpec{img:'#', c:Some(colors::WHITE)});
         for z in VIEW..SCREEN_HEIGHT { dm.draw(&[0,z], fake_wall.clone());};    // likely bad signature for dm.draw
-        for z in VIEW..SCREEN_WIDTH { dm. draw(&[z, VIEW-1], fake_wall.clone());};
+        let mut i = VIEW+1;
+        for c in n.chars() {
+            dm.draw(&[i, VIEW - 1], Ok(CharSpec{img:c, c:Some(colors::WHITE)}));
+            i += 1;
+        }
+//        for z in VIEW..SCREEN_WIDTH { dm.draw(&[z, VIEW-1], fake_wall.clone());};
     }
 
     pub fn new_actor(&mut self, _model: r_ActorModel, _camera:&Location, _pos:[i32;2]) -> Option<r_Actor> {
@@ -394,7 +399,7 @@ impl World {
         let _t_floor = self.new_terrain("floor", Ok(CharSpec{img:'.', c:Some(colors::BRASS)}), true, true); // wooden?
         let _t_grass = self.new_terrain("grass", Ok(CharSpec{img:'.', c:Some(colors::GREEN)}), true, true);
         let _t_stone_floor = self.new_terrain("stone floor", Ok(CharSpec{img:'.', c:Some(colors::GREY)}), true, true);
-        let _t_wall = self.new_terrain("wall", Ok(CharSpec{img:'#', c:None}), true, true);
+        let _t_wall = self.new_terrain("wall", Ok(CharSpec{img:'#', c:Some(colors::GREY)}), true, true);
 
         // final architecture...
         // scale: 10' passage is 3 cells wide (allows centering doors properly)
@@ -403,7 +408,7 @@ impl World {
         // * small tower floor: 6x6 floor; might want to clip corners
         // * stairwell: floor 2x3; several flavors w/involuntary exits
         // the NW tower is the only one that needs correct coordinates initially.
-        let mut _tower_nw = MapRect::new(Rect::new([6,6],[8,8]),Rc::clone(&_t_stone_floor), Rc::clone(&_t_wall));
+        let mut _tower_nw = MapRect::new(Rect::new([6,6],[9,9]),Rc::clone(&_t_stone_floor), Rc::clone(&_t_wall));
         let mut _tower_ne = _tower_nw.clone();
         let mut _tower_se = _tower_nw.clone();
         let mut _tower_sw = _tower_nw.clone();
@@ -448,8 +453,24 @@ impl World {
         _inner_se.rect += n_delta;
         _inner_se.rect += n_delta;
 
+        let se_anchor = _tower_se.rect.anchor(Compass::SE);
+        let oc_ryacho_ground_floor = self.new_map("Outlaw Castle Rya'cho", [se_anchor[0]+6, se_anchor[1]+6], Rc::clone(&_t_grass));
+
+        {
+        let mut m = oc_ryacho_ground_floor.borrow_mut();
+        _tower_nw.draw(&mut m);
+        _tower_ne.draw(&mut m);
+        _tower_sw.draw(&mut m);
+        _tower_se.draw(&mut m);
+        _inner_n.draw(&mut m);
+        _inner_e.draw(&mut m);
+        _inner_w.draw(&mut m);
+        _inner_se.draw(&mut m);
+        _inner_sw.draw(&mut m);
+        }
+
         // \todo map generation
-        let mockup_map = self.new_map("Mock", [VIEW, VIEW], _t_grass);
+        let mockup_map = self.new_map("Mock", [VIEW, VIEW], Rc::clone(&_t_grass));
         {
         let mut m = mockup_map.borrow_mut();
         for x in 0..VIEW {
@@ -459,9 +480,9 @@ impl World {
         }
 
         // \todo construct PC(s)
-        let camera_anchor = Location::new(&mockup_map, [0, 0]);
+        let camera_anchor = Location::new(&oc_ryacho_ground_floor, [0, 0]);
         let player_model = self.new_actor_model("soldier", Ok(CharSpec{img:'s', c:None}));
-        let player = self.new_actor(player_model.clone(), &camera_anchor, [VIEW_RADIUS, VIEW_RADIUS]).unwrap();
+        let player = self.new_actor(player_model.clone(), &camera_anchor, [se_anchor[0]+3, se_anchor[1]+3]).unwrap();
         player.borrow_mut().is_pc = true;
         return player;
     }

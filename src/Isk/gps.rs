@@ -218,7 +218,7 @@ pub struct Map {
     dim : [usize;2],
     name : String,
     actors: Vec<r_Actor>,  // Rogue Survivor Revived needs this for turn ordering
-    objects: HashMap<Location,r_MapObject>,
+    objects: HashMap<[i32;2],r_MapObject>,
     terrain: Vec<r_Terrain>
 }
 pub type r_Map = Rc<RefCell<Map>>;   // simulates C# class or C++ std::shared_ptr
@@ -266,6 +266,21 @@ impl Map {
         let dest = Map::usize_cast(pt);
         self.terrain[dest[0]+dest[1]*self.dim[0]] = src;
     }
+
+    pub fn set_map_object(&mut self, src:r_MapObject) -> Option<r_MapObject> {
+        let loc = src.borrow().loc();
+//      let map = loc.map.borrow();
+//      debug_assert!(self == map);
+        debug_assert!(self.in_bounds(loc.pos));
+        return self.objects.insert(loc.pos, src);
+    }
+
+    pub fn get_map_object(&self, pt:[i32;2]) -> Option<r_MapObject> {
+        debug_assert!(self.in_bounds(pt));
+        if let Some(obj) = self.objects.get(&pt) { return Some(Rc::clone(obj)); }
+        else { return None; }
+    }
+
     pub fn is_walkable_for(&self, pt:&[i32;2], _who:&Actor) -> bool {
         debug_assert!(self.in_bounds(*pt));
         let dest = Map::usize_cast(*pt);
@@ -289,6 +304,10 @@ impl Map {
         if DisplayManager::is_visible(&tile_fg) { ret.push(tile_fg); }
         }
         // \todo check for map objects
+        if let Some(obj) = self.objects.get(&pt) {
+            let tile_fg = obj.borrow().model.tile.clone();
+            if DisplayManager::is_visible(&tile_fg) { ret.push(tile_fg); }
+        }
         // \todo check for inventory
         for act in &self.actors {
             if let Ok(a) = act.try_borrow() {

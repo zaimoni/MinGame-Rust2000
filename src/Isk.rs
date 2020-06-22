@@ -191,14 +191,18 @@ impl Actor {
 
 pub struct MapObjectModel {
     pub name: String,
-    pub tile: TileSpec
+    pub tile: TileSpec,
+    pub walkable: bool,
+    pub transparent: bool
 }
 type r_MapObjectModel = Rc<MapObjectModel>;
 
 impl MapObjectModel {
-    pub fn new(_name: &str, _tile:TileSpec) -> MapObjectModel {
-        return MapObjectModel{name:_name.to_string(), tile:_tile};
+    pub fn new(_name: &str, _tile:TileSpec, _walkable:bool, _transparent:bool) -> MapObjectModel {
+        return MapObjectModel{name:_name.to_string(), tile:_tile, walkable:_walkable, transparent:_transparent};
     }
+
+    pub fn is_named(&self, _name:&str) -> bool { return self.name == _name; }
 }
 
 pub struct MapObject {
@@ -218,6 +222,12 @@ impl ConsoleRenderable for MapObject {
     }
     fn set_loc(&mut self, src:Location) -> () {
         self.my_loc = src;
+    }
+}
+
+impl MapObject {
+    pub fn new(_model: r_MapObjectModel, _loc: Location) -> MapObject {
+        return MapObject{model:_model, my_loc:_loc};
     }
 }
 
@@ -265,7 +275,19 @@ impl World {
         return None;
     }
 
-    // \todo map object model API
+    pub fn new_map_object_model(&mut self,_name: &str, _tile:TileSpec, _walkable:bool, _transparent:bool) -> r_MapObjectModel
+    {
+        let ret = Rc::new(MapObjectModel::new(_name, _tile, _walkable, _transparent));
+        self.obj_types.push(Rc::clone(&ret));
+        return ret;
+    }
+
+    pub fn get_map_object_model(&self, _name:&str) -> Option<r_MapObjectModel> {
+        for a_type in &self.obj_types {
+            if a_type.is_named(_name) { return Some(Rc::clone(&a_type)); };
+        }
+        return None;
+    }
 
     pub fn new_terrain(&mut self, _name: &str, _tile: TileSpec, _walkable:bool, _transparent:bool) -> r_Terrain {
         let ret = Rc::new(Terrain::new(_name, _tile, _walkable, _transparent));
@@ -400,6 +422,9 @@ impl World {
         let _t_stone_floor = self.new_terrain("stone floor", Ok(CharSpec{img:'.', c:Some(colors::GREY)}), true, true);
         let _t_wall = self.new_terrain("wall", Ok(CharSpec{img:'#', c:Some(colors::GREY)}), false, false);
 
+        let _t_closed_door = self.new_map_object_model("door (closed)", Ok(CharSpec{img:'+', c:Some(colors::LIGHTER_SEPIA)}), false, false);
+        let _t_open_door = self.new_map_object_model("door (open)", Ok(CharSpec{img:'\'', c:Some(colors::LIGHTER_SEPIA)}), true, true);
+
         // final architecture...
         // scale: 10' passage is 3 cells wide (allows centering doors properly)
         // template parts:
@@ -458,9 +483,17 @@ impl World {
         {
         let mut m = oc_ryacho_ground_floor.borrow_mut();
         _tower_nw.draw(&mut m);
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_nw.rect.anchor(Compass::E))+<[i32;2]>::from(Compass::W)))));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_nw.rect.anchor(Compass::S))+<[i32;2]>::from(Compass::N)))));
         _tower_ne.draw(&mut m);
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_ne.rect.anchor(Compass::W))))));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_ne.rect.anchor(Compass::S))+<[i32;2]>::from(Compass::N)))));
         _tower_sw.draw(&mut m);
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_sw.rect.anchor(Compass::E))+<[i32;2]>::from(Compass::W)))));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_sw.rect.anchor(Compass::N))))));
         _tower_se.draw(&mut m);
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_se.rect.anchor(Compass::W))))));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_se.rect.anchor(Compass::N))))));
         _inner_n.draw(&mut m);
         _inner_e.draw(&mut m);
         _inner_w.draw(&mut m);

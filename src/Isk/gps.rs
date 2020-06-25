@@ -1,4 +1,5 @@
 use crate::isk::*;
+use rand::Rng;
 use std::convert::TryFrom;
 use std::ops::{Add,AddAssign};
 use std::collections::HashMap;
@@ -48,6 +49,14 @@ impl From<Compass> for [i32;2] {
     }
 }
 
+impl AddAssign<Compass> for [i32;2] {
+    fn add_assign(&mut self, src: Compass) {
+        let x = <[i32;2]>::from(src);
+        self[0] += x[0];
+        self[1] += x[1];
+    }
+}
+
 impl TryFrom<i32> for Compass {
     type Error = Error;
 
@@ -87,6 +96,9 @@ impl AddAssign<&[i32;2]> for Rect {
 }
 
 impl Rect {
+    pub fn width(&self) -> usize { return self._dim[0]; }
+    pub fn height(&self) -> usize { return self._dim[1]; }
+
     fn cross_subassign(lhs:&mut i32, rhs:&mut usize) {
         if 0 < *rhs {
             if 0 > *lhs {    // prevent working with i32::MIN
@@ -123,6 +135,39 @@ impl Rect {
 
     pub fn new(o:[i32;2], d:[usize;2]) -> Rect {
         return Rect{_origin:o, _dim:d};
+    }
+
+    pub fn split<R: Rng + ?Sized>(&mut self, r:&mut R, dir:Compass, lb:usize, ub:usize) -> Option<Rect> {
+        debug_assert!(lb <= ub);
+        debug_assert!(1 <= lb);
+        let cut = r.gen_range(lb,ub);
+        let i_cut = i32::try_from(cut).unwrap();
+        match dir {
+            Compass::N => {
+                debug_assert!(ub < self.height());
+                return None;
+            },
+            Compass::E => {
+                debug_assert!(ub < self.width());
+                let ret = Rect::new([self._origin[0]+i_cut, self._origin[1]], [self._dim[0]-cut, self._dim[1]]);
+                self._dim[0] = cut;
+                return Some(ret);
+            },
+            Compass::S => {
+                debug_assert!(ub < self.height());
+                let ret = Rect::new([self._origin[0], self._origin[1]+i_cut], [self._dim[0], self._dim[1]-cut]);
+                self._dim[1] = cut;
+                return Some(ret);
+            },
+            Compass::W => {
+                debug_assert!(ub < self.width());
+                return None;
+            },
+            _ => {
+                debug_assert!(false,"unhandled split direction");
+                return None;
+            }
+        }
     }
 
     pub fn center(&self) -> [i32;2] {

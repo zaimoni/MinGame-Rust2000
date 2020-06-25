@@ -1,11 +1,14 @@
 pub mod gps;
 
 use crate::isk::gps::*;
+use rand_xoshiro::rand_core::SeedableRng;
+use rand_xoshiro::Xoshiro256PlusPlus;
 use tcod::colors;
 use tcod::console::{Root , Offscreen, Console, FontLayout, FontType, BackgroundFlag, blit};
 use std::rc::Rc;
 use std::rc::Weak;
 use std::cell::RefCell;
+use std::time::SystemTime;
 
 // at some point we'll want both a sidebar and a message bar
 pub const VIEW_RADIUS: i32 = 21;    // Cf. Cataclysm:Z, Rogue Survivor Revived
@@ -421,9 +424,14 @@ impl World {
         let _t_grass = self.new_terrain("grass", Ok(CharSpec{img:'.', c:Some(colors::GREEN)}), true, true);
         let _t_stone_floor = self.new_terrain("stone floor", Ok(CharSpec{img:'.', c:Some(colors::GREY)}), true, true);
         let _t_wall = self.new_terrain("wall", Ok(CharSpec{img:'#', c:Some(colors::GREY)}), false, false);
+        let _t_stone_culvert_ns = self.new_terrain("stone culvert", Ok(CharSpec{img:'|', c:Some(colors::GREY)}), true, true);
+        let _t_inset_waterwheel_ns = self.new_terrain("water wheel in floor", Ok(CharSpec{img:'=', c:Some(colors::LIGHTER_SEPIA)}), true, true);    // but can't stay still on it
+        let _t_inset_waterwheel_sd = self.new_terrain("water wheel in floor", Ok(CharSpec{img:'_', c:Some(colors::LIGHTER_SEPIA)}), true, true);   // won't support weight
 
         let _t_closed_door = self.new_map_object_model("door (closed)", Ok(CharSpec{img:'+', c:Some(colors::LIGHTER_SEPIA)}), false, false);
         let _t_open_door = self.new_map_object_model("door (open)", Ok(CharSpec{img:'\'', c:Some(colors::LIGHTER_SEPIA)}), true, true);
+        let _t_artesian_spring = self.new_map_object_model("artesian spring", Ok(CharSpec{img:'!', c:Some(colors::AZURE)}), true, true);
+        let _t_water = self.new_map_object_model("water", Ok(CharSpec{img:'~', c:Some(colors::AZURE)}), true, true);
 
         // final architecture...
         // scale: 10' passage is 3 cells wide (allows centering doors properly)
@@ -477,6 +485,31 @@ impl World {
         _inner_se.rect += n_delta;
         _inner_se.rect += n_delta;
 
+        // inner rooms (crowded...this is both "too small" and "too large")
+        let mut p_rng = Xoshiro256PlusPlus::seed_from_u64(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
+
+        let mut _centerzone = MapRect::new(Rect::new(_inner_n.rect.anchor(Compass::SW),[_inner_n.rect.width(),_inner_e.rect.height()]),Rc::clone(&_t_stone_floor), Rc::clone(&_t_wall));
+        _centerzone.set_wallcode(0,1,1,1);
+        let mut _s_centerzone = _centerzone.clone();
+        _s_centerzone.rect = _centerzone.rect.split(&mut p_rng,Compass::S,7,10).unwrap();
+        let mut _industrial = _centerzone.clone();
+        {
+        let w = _centerzone.rect.width();
+        _industrial.rect = _centerzone.rect.split(&mut p_rng,Compass::E,w/2-1,2*w/3-1).unwrap();
+        }
+        _centerzone.set_wallcode(0,0,1,1);
+        let mut _shop = _s_centerzone.clone();
+        {
+        let w = _s_centerzone.rect.width();
+        _shop.rect = _s_centerzone.rect.split(&mut p_rng,Compass::E,3*w/5, 4*w/5-1).unwrap();
+        }
+        _s_centerzone.set_wallcode(0,0,1,1);
+        let mut _accounting = _s_centerzone.clone();
+        {
+        let w = _s_centerzone.rect.width();
+        _accounting.rect = _s_centerzone.rect.split(&mut p_rng,Compass::E,w/3, 2*w/3-1).unwrap();
+        }
+
         let se_anchor = _tower_se.rect.anchor(Compass::SE);
         let oc_ryacho_ground_floor = self.new_map("Outlaw Castle Rya'cho", [se_anchor[0]+6, se_anchor[1]+6], Rc::clone(&_t_grass));
 
@@ -499,6 +532,69 @@ impl World {
         _inner_w.draw(&mut m);
         _inner_se.draw(&mut m);
         _inner_sw.draw(&mut m);
+
+        // access doors on sides
+        let mut axis = _inner_w.rect.anchor(Compass::NE);
+        axis += Compass::SW;
+        m.set_terrain(axis,Rc::clone(&_t_stone_floor));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,axis)))));
+
+        axis = _inner_e.rect.anchor(Compass::NW);
+        axis += Compass::S;
+        m.set_terrain(axis,Rc::clone(&_t_stone_floor));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,axis)))));
+
+        // central admin
+        _centerzone.draw(&mut m);
+        _industrial.draw(&mut m);
+        _s_centerzone.draw(&mut m);
+        _accounting.draw(&mut m);
+        _shop.draw(&mut m);
+
+        // access doors for central admin
+        axis = _industrial.rect.anchor(Compass::E);
+        axis += Compass::W;
+        m.set_terrain(axis,Rc::clone(&_t_stone_floor));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,axis)))));
+
+        axis = _shop.rect.anchor(Compass::E);
+        axis += Compass::W;
+        m.set_terrain(axis,Rc::clone(&_t_stone_floor));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,axis)))));
+
+        axis = _shop.rect.anchor(Compass::W);
+        m.set_terrain(axis,Rc::clone(&_t_stone_floor));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,axis)))));
+
+        axis = _accounting.rect.anchor(Compass::W);
+        m.set_terrain(axis,Rc::clone(&_t_stone_floor));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,axis)))));
+
+        axis = _s_centerzone.rect.anchor(Compass::W);
+        m.set_terrain(axis,Rc::clone(&_t_stone_floor));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,axis)))));
+
+        axis = _s_centerzone.rect.anchor(Compass::N);
+        axis += Compass::N;
+        m.set_terrain(axis,Rc::clone(&_t_stone_floor));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,axis)))));
+
+        // install the waterwheel
+        axis = _industrial.rect.anchor(Compass::N);
+        m.set_terrain(axis,Rc::clone(&_t_inset_waterwheel_sd));
+        axis += Compass::S;
+        m.set_terrain(axis,Rc::clone(&_t_inset_waterwheel_ns));
+        axis += Compass::S;
+        m.set_terrain(axis,Rc::clone(&_t_stone_culvert_ns));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(Rc::clone(&_t_water),Location::new(&oc_ryacho_ground_floor,axis)))));
+        axis += Compass::S;
+        m.set_terrain(axis,Rc::clone(&_t_stone_culvert_ns));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(Rc::clone(&_t_water),Location::new(&oc_ryacho_ground_floor,axis)))));
+        axis += Compass::S;
+        m.set_terrain(axis,Rc::clone(&_t_stone_culvert_ns));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(Rc::clone(&_t_water),Location::new(&oc_ryacho_ground_floor,axis)))));
+        axis += Compass::S;
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(Rc::clone(&_t_artesian_spring),Location::new(&oc_ryacho_ground_floor,axis)))));
         }
 
         // \todo map generation

@@ -22,7 +22,7 @@ impl<T> Singleton<T> {
     }
 }
 
-static w_test:Singleton<World> = Singleton::<World>::new(|| return World::new());
+static w_test:Singleton<World> = Singleton::<World>::new(|| return World::new());   // requires async variables
 */
 
 // this is going to lift to another file eventually

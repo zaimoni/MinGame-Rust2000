@@ -331,7 +331,9 @@ impl Map {
         let dest = Map::usize_cast(*pt);
         if !self.terrain[dest[0]+dest[1]*self.dim[0]].walkable { return false; }    // a ghost (or hologram) might disagree, but non-issue here
         // \todo don't move into another Actor (could be done elsewhere)
-        // \todo check for map objects
+        if let Some(obj) = self.get_map_object(*pt) { // check for map objects
+            if !obj.borrow().model.walkable { return false; }
+        }
         return true;
     }
 

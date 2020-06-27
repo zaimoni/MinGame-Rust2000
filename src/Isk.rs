@@ -5,6 +5,7 @@ use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use tcod::colors;
 use tcod::console::{Root , Offscreen, Console, FontLayout, FontType, BackgroundFlag, blit};
+use tcod::input::Key;
 use std::rc::Rc;
 use std::rc::Weak;
 use std::cell::RefCell;
@@ -234,6 +235,7 @@ impl MapObject {
     }
 }
 
+type Handler = fn(k:Key, r: &mut Root, w:&mut World, pc:&mut Actor) -> bool;
 pub struct World {
     atlas : Vec<r_Map>,
 //  offset: ... // (C++: std::map<std::pair<std::shared_ptr<Map>,std::shared_ptr<Map>>,[i32;2]>)
@@ -242,12 +244,13 @@ pub struct World {
 //  not clear how to do C++ static member variables; put these here rather than where they belong
     actor_types: Vec<r_ActorModel>,
     obj_types: Vec<r_MapObjectModel>,
-    terrain_types: Vec<r_Terrain>
+    terrain_types: Vec<r_Terrain>,
+    event_handlers: Vec<Handler>
 }
 
 impl World {
     pub fn new() -> World {
-        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new()};
+        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new(), event_handlers:Vec::new()};
     }
 
     pub fn new_map(&mut self, _name:&str, _dim: [i32;2], _terrain:r_Terrain) -> r_Map {
@@ -303,6 +306,22 @@ impl World {
             if a_type.is_named(_name) { return Some(Rc::clone(&a_type)); };
         }
         return None;
+    }
+
+    pub fn add_handler(&mut self, src:Handler) { self.event_handlers.push(src); }
+
+    pub fn exec_key(&mut self, r:&mut Root, pc:&mut Actor) -> bool {
+        debug_assert!(pc.is_pc);
+
+//      let ev = check_for_event(EventFlags::Keypress);
+        let key = r.wait_for_keypress(true);    // could r.check_for_keypress instead but then would have to pause/multi-process explicitly
+        let n = self.event_handlers.len();
+        let ret = (self.event_handlers[n-1])(key, r, self, pc);
+        if 1 < n {
+            if ret { self.event_handlers.pop(); }
+            return false;
+        }
+        return ret;
     }
 
     pub fn canonical_loc(&self, viewpoint:Location) -> Option<Location> {

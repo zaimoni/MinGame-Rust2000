@@ -4,6 +4,26 @@ use tcod::console::Root;
 use crate::isk::*;
 use crate::isk::gps::*;
 use std::rc::Rc;
+/*
+// Failed attempt at singleton wrapper class
+use std::sync::{RwLock,RwLockReadGuard};
+
+struct Singleton<T> {
+    ooao: RwLock<T>,
+}
+
+impl<T> Singleton<T> {
+    pub fn new(c:fn() -> T) -> Singleton<T> {
+        return Singleton::<T>{ooao:RwLock::new((c)())};
+    }
+
+    pub fn get(&self) -> RwLockReadGuard<T> {
+        return self.ooao.read().unwrap();
+    }
+}
+
+static w_test:Singleton<World> = Singleton::<World>::new(|| return World::new());
+*/
 
 // this is going to lift to another file eventually
 // We likely should be passing a Player or PlayerController object

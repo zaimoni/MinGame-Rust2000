@@ -4,6 +4,7 @@ use tcod::console::Root;
 use crate::isk::*;
 use crate::isk::gps::*;
 use std::rc::Rc;
+use tcod::input::{Key, KeyCode /*,EventFlags,check_for_event*/};
 /*
 // Failed attempt at singleton wrapper class
 use std::sync::{RwLock,RwLockReadGuard};
@@ -26,13 +27,9 @@ static w_test:Singleton<World> = Singleton::<World>::new(|| return World::new())
 */
 
 // this is going to lift to another file eventually
-// We likely should be passing a Player or PlayerController object
-fn handle_events_pc(r: &mut Root, w:&World, pc:&mut Actor) -> bool {
-    use tcod::input::{Key, KeyCode /*,EventFlags,check_for_event*/};
-    debug_assert!(pc.is_pc);
+fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool {
+    let mut pc = r_pc.borrow_mut();
 
-//  let ev = check_for_event(EventFlags::Keypress);
-    let key = r.wait_for_keypress(true);    // could r.check_for_keypress instead but then would have to pause/multi-process explicitly
     let cur_loc = pc.loc();
     let mut next_loc: Option<Location> = Some(cur_loc.clone());
 
@@ -86,7 +83,7 @@ fn handle_events_pc(r: &mut Root, w:&World, pc:&mut Actor) -> bool {
     }
     if let Some(loc) = next_loc {
         // \todo process bump moving
-        if loc.is_walkable_for(pc) {
+        if loc.is_walkable_for(&pc) {
             if !Rc::ptr_eq(&loc.map,&cur_loc.map) {
                 // transfer between owning maps
             }
@@ -100,6 +97,7 @@ fn handle_events_pc(r: &mut Root, w:&World, pc:&mut Actor) -> bool {
 fn main() {
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
     let mut world = World::new();
+    world.add_handler(event_backbone_pc);
     let player = world.new_game();
 
     while !dm.root.window_closed() {
@@ -109,7 +107,7 @@ fn main() {
         dm.render();
 
         // Handling user input
-        if handle_events_pc(&mut dm.root, &world, &mut player.borrow_mut()) { return; }
+        if world.exec_key(&mut dm.root, Rc::clone(&player)) { return; }
 
         // Updating the gamestate
         // Rendering the results

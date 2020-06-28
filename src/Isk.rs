@@ -168,7 +168,7 @@ pub struct Actor {
     pub model: r_ActorModel,
     my_loc: Location
 }
-type r_Actor = Rc<RefCell<Actor>>;
+pub type r_Actor = Rc<RefCell<Actor>>;
 type w_Actor = Weak<RefCell<Actor>>;
 
 impl ConsoleRenderable for Actor {
@@ -235,7 +235,7 @@ impl MapObject {
     }
 }
 
-type Handler = fn(k:Key, r: &mut Root, w:&mut World, pc:&mut Actor) -> bool;
+type Handler = fn(k:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool;
 pub struct World {
     atlas : Vec<r_Map>,
 //  offset: ... // (C++: std::map<std::pair<std::shared_ptr<Map>,std::shared_ptr<Map>>,[i32;2]>)
@@ -310,13 +310,13 @@ impl World {
 
     pub fn add_handler(&mut self, src:Handler) { self.event_handlers.push(src); }
 
-    pub fn exec_key(&mut self, r:&mut Root, pc:&mut Actor) -> bool {
-        debug_assert!(pc.is_pc);
+    pub fn exec_key(&mut self, r:&mut Root, r_pc:r_Actor) -> bool {
+        debug_assert!(r_pc.borrow_mut().is_pc);
 
 //      let ev = check_for_event(EventFlags::Keypress);
         let key = r.wait_for_keypress(true);    // could r.check_for_keypress instead but then would have to pause/multi-process explicitly
         let n = self.event_handlers.len();
-        let ret = (self.event_handlers[n-1])(key, r, self, pc);
+        let ret = (self.event_handlers[n-1])(key, r, self, r_pc);
         if 1 < n {
             if ret { self.event_handlers.pop(); }
             return false;

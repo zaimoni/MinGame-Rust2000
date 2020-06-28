@@ -444,6 +444,12 @@ impl Location {
     }
 
     pub fn is_walkable_for(&self, who:&Actor) -> bool { return self.map.borrow().is_walkable_for(&self.pos, who); }
+    pub fn get_map_object(&self) -> Option<r_MapObject> {
+        return self.map.borrow().get_map_object(self.pos);
+    }
+    pub fn set_map_object(&self, src:r_MapObjectModel) -> Option<r_MapObject> {
+        return self.map.borrow_mut().set_map_object(Rc::new(RefCell::new(MapObject::new(src,self.clone()))));
+    }
 }
 
 pub trait ConsoleRenderable {

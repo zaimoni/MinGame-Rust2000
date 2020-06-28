@@ -84,10 +84,16 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
     if let Some(loc) = next_loc {
         // \todo process bump moving
         if loc.is_walkable_for(&pc) {
+            // \todo time cost
             if !Rc::ptr_eq(&loc.map,&cur_loc.map) {
                 // transfer between owning maps
             }
             pc.set_loc(loc);
+        } else if let Some(obj) = loc.get_map_object() {
+            if obj.borrow().model.is_named("door (closed)") {    // XXX static variable or test of model property needed: bump-open or bump-interact
+                loc.set_map_object(w.get_map_object_model("door (open)").unwrap());
+            } // else {} // \todo error message
+            // \todo time cost
         } // else {} // \todo error message
     } // else {} // \todo error message
 

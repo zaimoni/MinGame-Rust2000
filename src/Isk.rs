@@ -199,7 +199,7 @@ pub struct MapObjectModel {
     pub walkable: bool,
     pub transparent: bool
 }
-type r_MapObjectModel = Rc<MapObjectModel>;
+pub type r_MapObjectModel = Rc<MapObjectModel>;
 
 impl MapObjectModel {
     pub fn new(_name: &str, _tile:TileSpec, _walkable:bool, _transparent:bool) -> MapObjectModel {

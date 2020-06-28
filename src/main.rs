@@ -90,8 +90,8 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
             }
             pc.set_loc(loc);
         } else if let Some(obj) = loc.get_map_object() {
-            if obj.borrow().model.is_named("door (closed)") {    // XXX static variable or test of model property needed: bump-open or bump-interact
-                loc.set_map_object(w.get_map_object_model("door (open)").unwrap());
+            if let Some(next_obj) = &obj.borrow().model.morph_on_bump {
+                loc.set_map_object(Rc::clone(&next_obj));
             } // else {} // \todo error message
             // \todo time cost
         } // else {} // \todo error message

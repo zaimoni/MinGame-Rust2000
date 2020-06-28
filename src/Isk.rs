@@ -112,6 +112,7 @@ impl DisplayManager {
     }
     // work around design decision to not have function overloading in Rust
     // SFML port would also allow tiles
+    // maybe trait would get function overloading here?
     pub fn draw(&mut self, scr_loc: &[i32;2], img : TileSpec) {
         if DisplayManager::in_bounds(scr_loc) {
             match img {
@@ -127,6 +128,17 @@ impl DisplayManager {
                 },
                 _ => {debug_assert!(false,"image tiles not implemented")},
             };
+        }
+    }
+
+    pub fn draws(&mut self, scr_loc: &[i32;2], src:String) {
+        if DisplayManager::in_bounds(scr_loc) {
+            let mut pt = scr_loc.clone();
+            for c in src.chars() {
+                self.draw(&pt, Ok(CharSpec{img:c, c:Some(colors::WHITE)}));
+                pt[0] += 1;
+                if !DisplayManager::in_bounds(&pt) { break; }
+            }
         }
     }
 
@@ -197,13 +209,14 @@ pub struct MapObjectModel {
     pub name: String,
     pub tile: TileSpec,
     pub walkable: bool,
-    pub transparent: bool
+    pub transparent: bool,
+    pub morph_on_bump: Option<Rc<MapObjectModel>>   // arguably should be in World object instead
 }
 pub type r_MapObjectModel = Rc<MapObjectModel>;
 
 impl MapObjectModel {
     pub fn new(_name: &str, _tile:TileSpec, _walkable:bool, _transparent:bool) -> MapObjectModel {
-        return MapObjectModel{name:_name.to_string(), tile:_tile, walkable:_walkable, transparent:_transparent};
+        return MapObjectModel{name:_name.to_string(), tile:_tile, walkable:_walkable, transparent:_transparent, morph_on_bump:None};
     }
 
     pub fn is_named(&self, _name:&str) -> bool { return self.name == _name; }
@@ -245,12 +258,14 @@ pub struct World {
     actor_types: Vec<r_ActorModel>,
     obj_types: Vec<r_MapObjectModel>,
     terrain_types: Vec<r_Terrain>,
-    event_handlers: Vec<Handler>
+    event_handlers: Vec<Handler>,    // code locality; integrates InputManager functionality
+    prompt: Option<String>,
+    messages: Vec<(String,u8)>
 }
 
 impl World {
     pub fn new() -> World {
-        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new(), event_handlers:Vec::new()};
+        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new(), event_handlers:Vec::new(), prompt:None, messages:Vec::new()};
     }
 
     pub fn new_map(&mut self, _name:&str, _dim: [i32;2], _terrain:r_Terrain) -> r_Map {
@@ -281,9 +296,9 @@ impl World {
         return None;
     }
 
-    pub fn new_map_object_model(&mut self,_name: &str, _tile:TileSpec, _walkable:bool, _transparent:bool) -> r_MapObjectModel
+    pub fn new_map_object_model(&mut self, src:MapObjectModel) -> r_MapObjectModel
     {
-        let ret = Rc::new(MapObjectModel::new(_name, _tile, _walkable, _transparent));
+        let ret = Rc::new(src);
         self.obj_types.push(Rc::clone(&ret));
         return ret;
     }
@@ -417,11 +432,7 @@ impl World {
         // tracers so we can see what is going on
         let fake_wall = Ok(CharSpec{img:'#', c:Some(colors::WHITE)});
         for z in VIEW..SCREEN_HEIGHT { dm.draw(&[0,z], fake_wall.clone());};    // likely bad signature for dm.draw
-        let mut i = VIEW+1;
-        for c in n.chars() {
-            dm.draw(&[i, VIEW - 1], Ok(CharSpec{img:c, c:Some(colors::WHITE)}));
-            i += 1;
-        }
+        dm.draws(&[VIEW+1, VIEW-1], n);
     }
 
     pub fn new_actor(&mut self, _model: r_ActorModel, _camera:&Location, _pos:[i32;2]) -> Option<r_Actor> {
@@ -447,10 +458,12 @@ impl World {
         let _t_inset_waterwheel_ns = self.new_terrain("water wheel in floor", Ok(CharSpec{img:'=', c:Some(colors::LIGHTER_SEPIA)}), true, true);    // but can't stay still on it
         let _t_inset_waterwheel_sd = self.new_terrain("water wheel in floor", Ok(CharSpec{img:'_', c:Some(colors::LIGHTER_SEPIA)}), true, true);   // won't support weight
 
-        let _t_closed_door = self.new_map_object_model("door (closed)", Ok(CharSpec{img:'+', c:Some(colors::LIGHTER_SEPIA)}), false, false);
-        let _t_open_door = self.new_map_object_model("door (open)", Ok(CharSpec{img:'\'', c:Some(colors::LIGHTER_SEPIA)}), true, true);
-        let _t_artesian_spring = self.new_map_object_model("artesian spring", Ok(CharSpec{img:'!', c:Some(colors::AZURE)}), true, true);
-        let _t_water = self.new_map_object_model("water", Ok(CharSpec{img:'~', c:Some(colors::AZURE)}), true, true);
+        let _t_open_door = self.new_map_object_model(MapObjectModel::new("door (open)", Ok(CharSpec{img:'\'', c:Some(colors::LIGHTER_SEPIA)}), true, true));
+        let mut _stage_closed_door = MapObjectModel::new("door (closed)", Ok(CharSpec{img:'+', c:Some(colors::LIGHTER_SEPIA)}), false, false);
+        _stage_closed_door.morph_on_bump = Some(Rc::clone(&_t_open_door));
+        let _t_closed_door = self.new_map_object_model(_stage_closed_door);
+        let _t_artesian_spring = self.new_map_object_model(MapObjectModel::new("artesian spring", Ok(CharSpec{img:'!', c:Some(colors::AZURE)}), true, true));
+        let _t_water = self.new_map_object_model(MapObjectModel::new("water", Ok(CharSpec{img:'~', c:Some(colors::AZURE)}), true, true));
 
         // final architecture...
         // scale: 10' passage is 3 cells wide (allows centering doors properly)
@@ -616,15 +629,7 @@ impl World {
         m.set_map_object(Rc::new(RefCell::new(MapObject::new(Rc::clone(&_t_artesian_spring),Location::new(&oc_ryacho_ground_floor,axis)))));
         }
 
-        // \todo map generation
-        let mockup_map = self.new_map("Mock", [VIEW, VIEW], Rc::clone(&_t_grass));
-        {
-        let mut m = mockup_map.borrow_mut();
-        for x in 0..VIEW {
-            m.set_terrain([VIEW_RADIUS,x], Rc::clone(&_t_floor));
-            m.set_terrain([x,VIEW_RADIUS], Rc::clone(&_t_stone_floor));
-        }
-        }
+        // end map generation
 
         // \todo construct PC(s)
         let camera_anchor = Location::new(&oc_ryacho_ground_floor, [0, 0]);

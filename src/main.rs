@@ -78,6 +78,24 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
         Key { code: KeyCode::NumPad3, .. } => {
             next_loc = w.canonical_loc(cur_loc.clone()+[1, 1]);
         },
+        // libtcod, for letter keys: canonical value in printable is the lower-case, even when modifiers applied
+        Key { code: KeyCode::Char, printable:'c', .. } => {
+            let locs = w.get_closable_locations(&cur_loc);
+            match locs.len() {
+                1 => {
+                    w.close(&locs[0], &pc);
+                    return false;
+                },
+                0 => {
+                    // \todo error message
+                    return false;
+                },
+                _ => {
+                    debug_assert!(false, "multiple_locations, need UI buildout");
+                    return false;
+                }
+            }
+        },
 
         _ => { return false; }
     }

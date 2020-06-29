@@ -6,9 +6,10 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use tcod::colors;
 use tcod::console::{Root , Offscreen, Console, FontLayout, FontType, BackgroundFlag, blit};
 use tcod::input::Key;
-use std::rc::Rc;
-use std::rc::Weak;
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::rc::{Rc,Weak};
 use std::time::SystemTime;
 
 // at some point we'll want both a sidebar and a message bar
@@ -76,6 +77,11 @@ impl Terrain {
     pub fn is_named(&self, _name:&str) -> bool { return self.name == _name; }
 }
 
+// member function overloading assistants
+trait Draw<T> {
+    fn draw(&mut self, scr_loc: &[i32;2], img : T); // intended interpretation: draw img starting at coordinate scr_loc
+}
+
 pub struct DisplayManager {
     pub root: Root,
     pub offscr: Offscreen,
@@ -110,37 +116,6 @@ impl DisplayManager {
             return true;    // should not need transparent images
         }
     }
-    // work around design decision to not have function overloading in Rust
-    // SFML port would also allow tiles
-    // maybe trait would get function overloading here?
-    pub fn draw(&mut self, scr_loc: &[i32;2], img : TileSpec) {
-        if DisplayManager::in_bounds(scr_loc) {
-            match img {
-                Ok(t) => {
-                    match t.c {
-                        Some(col) => {
-                            self.last_fg = col;
-                            self.offscr.set_default_foreground(self.last_fg);
-                        },
-                        None => ()
-                    }
-                    self.offscr.put_char(scr_loc[0], scr_loc[1], t.img, BackgroundFlag::None);
-                },
-                _ => {debug_assert!(false,"image tiles not implemented")},
-            };
-        }
-    }
-
-    pub fn draws(&mut self, scr_loc: &[i32;2], src:String) {
-        if DisplayManager::in_bounds(scr_loc) {
-            let mut pt = scr_loc.clone();
-            for c in src.chars() {
-                self.draw(&pt, Ok(CharSpec{img:c, c:Some(colors::WHITE)}));
-                pt[0] += 1;
-                if !DisplayManager::in_bounds(&pt) { break; }
-            }
-        }
-    }
 
     // \todo set background variants of above
     // SFML port would also allow tile background
@@ -158,6 +133,40 @@ impl DisplayManager {
     pub fn render(&mut self) {
         blit(&self.offscr, (0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT), &mut self.root, (0, 0), 1.0, 1.0);
         self.root.flush();
+    }
+}
+
+// SFML port would also allow tiles
+impl Draw<TileSpec> for DisplayManager {
+    fn draw(&mut self, scr_loc: &[i32;2], img : TileSpec) {
+        if DisplayManager::in_bounds(scr_loc) {
+            match img {
+                Ok(t) => {
+                    match t.c {
+                        Some(col) => {
+                            self.last_fg = col;
+                            self.offscr.set_default_foreground(self.last_fg);
+                        },
+                        None => ()
+                    }
+                    self.offscr.put_char(scr_loc[0], scr_loc[1], t.img, BackgroundFlag::None);
+                },
+                _ => {debug_assert!(false,"image tiles not implemented")},
+            };
+        }
+    }
+}
+
+impl Draw<String> for DisplayManager {
+    fn draw(&mut self, scr_loc: &[i32;2], src:String) {
+        if DisplayManager::in_bounds(scr_loc) {
+            let mut pt = scr_loc.clone();
+            for c in src.chars() {
+                self.draw(&pt, Ok(CharSpec{img:c, c:Some(colors::WHITE)}));
+                pt[0] += 1;
+                if !DisplayManager::in_bounds(&pt) { break; }
+            }
+        }
     }
 }
 
@@ -258,14 +267,16 @@ pub struct World {
     actor_types: Vec<r_ActorModel>,
     obj_types: Vec<r_MapObjectModel>,
     terrain_types: Vec<r_Terrain>,
+    obj_close: Vec<[r_MapObjectModel;2]>,  // HashMap compile-errors
     event_handlers: Vec<Handler>,    // code locality; integrates InputManager functionality
-    prompt: Option<String>,
+    prompt: Option<String>, // UI -- possibly should be player-driven instead
     messages: Vec<(String,u8)>
 }
 
 impl World {
     pub fn new() -> World {
-        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new(), event_handlers:Vec::new(), prompt:None, messages:Vec::new()};
+        return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new(), obj_close:Vec::new(),
+            event_handlers:Vec::new(), prompt:None, messages:Vec::new()};
     }
 
     pub fn new_map(&mut self, _name:&str, _dim: [i32;2], _terrain:r_Terrain) -> r_Map {
@@ -363,6 +374,36 @@ impl World {
         return None;
     }
 
+    fn is_closable_map_object(&self, obj:&r_MapObject) -> Option<r_MapObjectModel> {
+        for x in &self.obj_close {
+            if Rc::ptr_eq(&obj.borrow().model, &x[0]) { return Some(Rc::clone(&x[1])); }
+        }
+        return None;
+    }
+
+    pub fn get_closable_locations(&self, o:&Location) -> Vec<Location> {
+        let mut ret = Vec::<Location>::new();
+        // \todo properly iterate over all directions; cf crates.io/enum-iterator, https://github.com/rust-lang/rust/issues/5417 (declined by devteam)
+        for i in 0..8 {
+            let test = o.clone()+<[i32;2]>::from(Compass::try_from(i).unwrap());
+            if let Some(obj) = test.get_map_object() {
+                if let Some(dest) = self.is_closable_map_object(&obj) {
+                    ret.push(test);
+                }
+            }
+        }
+        return ret;
+    }
+
+    pub fn close(&mut self, o:&Location, _act:&Actor) -> bool {
+        if let Some(obj) = o.get_map_object() {
+            if let Some(dest) = self.is_closable_map_object(&obj) {
+                o.set_map_object(dest);
+                return true;
+            } else { return false; }
+        } else { return false; }
+    }
+
     pub fn screen_to_loc(&self, src:[i32;2], topleft:&Location) -> Option<Location> {
         return self.canonical_loc(Location::new(&topleft.map, [topleft.pos[0]+src[0], topleft.pos[1]+src[1]]));
     }
@@ -432,7 +473,7 @@ impl World {
         // tracers so we can see what is going on
         let fake_wall = Ok(CharSpec{img:'#', c:Some(colors::WHITE)});
         for z in VIEW..SCREEN_HEIGHT { dm.draw(&[0,z], fake_wall.clone());};    // likely bad signature for dm.draw
-        dm.draws(&[VIEW+1, VIEW-1], n);
+        dm.draw(&[VIEW+1, VIEW-1], n);
     }
 
     pub fn new_actor(&mut self, _model: r_ActorModel, _camera:&Location, _pos:[i32;2]) -> Option<r_Actor> {
@@ -462,6 +503,7 @@ impl World {
         let mut _stage_closed_door = MapObjectModel::new("door (closed)", Ok(CharSpec{img:'+', c:Some(colors::LIGHTER_SEPIA)}), false, false);
         _stage_closed_door.morph_on_bump = Some(Rc::clone(&_t_open_door));
         let _t_closed_door = self.new_map_object_model(_stage_closed_door);
+        self.obj_close.push([Rc::clone(&_t_open_door), Rc::clone(&_t_closed_door)]);
         let _t_artesian_spring = self.new_map_object_model(MapObjectModel::new("artesian spring", Ok(CharSpec{img:'!', c:Some(colors::AZURE)}), true, true));
         let _t_water = self.new_map_object_model(MapObjectModel::new("water", Ok(CharSpec{img:'~', c:Some(colors::AZURE)}), true, true));
 

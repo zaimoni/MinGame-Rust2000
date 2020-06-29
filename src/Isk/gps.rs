@@ -452,6 +452,13 @@ impl Location {
     }
 }
 
+impl std::fmt::Debug for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error>
+    {
+        return write!(f, "({},{})@{}", self.pos[0], self.pos[1], self.map.borrow().named());
+    }
+}
+
 pub trait ConsoleRenderable {
     fn loc(&self) -> Location;
     fn fg(&self) -> TileSpec;

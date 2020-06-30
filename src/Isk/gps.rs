@@ -4,7 +4,6 @@ use std::convert::TryFrom;
 use std::ops::{Add,AddAssign};
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::rc::Weak;
 use std::cell::RefCell;
 
 #[derive(Clone,PartialEq,Eq)]
@@ -267,7 +266,7 @@ pub struct Map {
     terrain: Vec<r_Terrain>
 }
 pub type r_Map = Rc<RefCell<Map>>;   // simulates C# class or C++ std::shared_ptr
-pub type w_Map = Weak<RefCell<Map>>; // simulates C++ std::weak_ptr
+//pub type w_Map = Weak<RefCell<Map>>; // simulates C++ std::weak_ptr
 
 impl PartialEq for Map {
     fn eq(&self, other: &Map) -> bool {

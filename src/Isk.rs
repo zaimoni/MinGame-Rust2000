@@ -7,9 +7,8 @@ use tcod::colors;
 use tcod::console::{Root , Offscreen, Console, FontLayout, FontType, BackgroundFlag, blit};
 use tcod::input::Key;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::rc::{Rc,Weak};
+use std::rc::Rc;
 use std::time::SystemTime;
 
 // at some point we'll want both a sidebar and a message bar
@@ -190,7 +189,7 @@ pub struct Actor {
     my_loc: Location
 }
 pub type r_Actor = Rc<RefCell<Actor>>;
-type w_Actor = Weak<RefCell<Actor>>;
+//type w_Actor = Weak<RefCell<Actor>>;
 
 impl ConsoleRenderable for Actor {
     fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
@@ -236,7 +235,7 @@ pub struct MapObject {
     my_loc: Location
 }
 type r_MapObject = Rc<RefCell<MapObject>>;
-type w_MapObject = Weak<RefCell<MapObject>>;
+//type w_MapObject = Weak<RefCell<MapObject>>;
 
 impl ConsoleRenderable for MapObject {
     fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
@@ -387,7 +386,7 @@ impl World {
         for i in 0..8 {
             let test = o.clone()+<[i32;2]>::from(Compass::try_from(i).unwrap());
             if let Some(obj) = test.get_map_object() {
-                if let Some(dest) = self.is_closable_map_object(&obj) {
+                if let Some(_dest) = self.is_closable_map_object(&obj) {
                     ret.push(test);
                 }
             }

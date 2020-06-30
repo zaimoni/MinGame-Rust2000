@@ -5,26 +5,52 @@ use crate::isk::*;
 use crate::isk::gps::*;
 use std::rc::Rc;
 use tcod::input::{Key, KeyCode /*,EventFlags,check_for_event*/};
-/*
 // Failed attempt at singleton wrapper class
-use std::sync::{RwLock,RwLockReadGuard};
+use std::collections::HashMap; 
+use std::sync::{Once,RwLock,RwLockReadGuard,RwLockWriteGuard};
 
+/*
 struct Singleton<T> {
-    ooao: RwLock<T>,
+    ooao: Option<RwLock<T>>,
+    init: Once
 }
 
 impl<T> Singleton<T> {
-    pub fn new(c:fn() -> T) -> Singleton<T> {
-        return Singleton::<T>{ooao:RwLock::new((c)())};
+    pub fn new() -> Singleton<T> {
+        return Singleton::<T>{ooao:None,init:Once::new()};
+    }
+
+    pub fn init(&mut self, c:fn() -> T) {
+        self.init.call_once(|| self.ooao = Some(RwLock::new((c)())));   // compile-errors: double mutable borrow
     }
 
     pub fn get(&self) -> RwLockReadGuard<T> {
-        return self.ooao.read().unwrap();
+        return self.ooao.as_ref().unwrap().read().unwrap();
+    }
+
+    pub fn get_mut(&self) -> RwLockWriteGuard<T> {
+        return self.ooao.as_ref().unwrap().write().unwrap();
     }
 }
 
-static w_test:Singleton<World> = Singleton::<World>::new(|| return World::new());   // requires async variables
+static ideal_line_cache:Singleton<HashMap<([i32;2],[i32;2]),Vec<[i32;2]>>> = Singleton{ooao:None,init:Once::new()};
 */
+static mut i_line_cache:Option<RwLock<HashMap<([i32;2],[i32;2]),Vec<[i32;2]>>>> = None;
+static init:Once = Once::new();
+
+fn get_cache() -> RwLockReadGuard<'static, HashMap<([i32; 2], [i32; 2]), Vec<[i32; 2]>>> {
+    unsafe {
+        init.call_once(|| i_line_cache = Some(RwLock::new(HashMap::new())));
+        return i_line_cache.as_ref().unwrap().read().unwrap();
+    }
+}
+
+fn get_cache_mut() -> RwLockWriteGuard<'static, HashMap<([i32; 2], [i32; 2]), Vec<[i32; 2]>>> {
+    unsafe {
+        init.call_once(|| i_line_cache = Some(RwLock::new(HashMap::new())));
+        return i_line_cache.as_ref().unwrap().write().unwrap();
+    }
+}
 
 // this is going to lift to another file eventually
 fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool {

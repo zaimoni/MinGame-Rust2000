@@ -2,9 +2,25 @@ use crate::isk::*;
 use rand::Rng;
 use std::convert::TryFrom;
 use std::ops::{Add,AddAssign};
+use std::ops::{Deref,DerefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
+
+// would prefer to template on both type and length, but Rust doesn't do that even for its own system types
+#[derive(Clone,PartialEq,Eq,Debug)]
+pub struct Point<T> {
+    pt:[T;2]
+}
+
+impl<T> Deref for Point<T> {
+    type Target = [T;2];
+    fn deref(&self) -> &<Self as std::ops::Deref>::Target { return &self.pt; }
+}
+
+impl<T> DerefMut for Point<T> {
+    fn deref_mut(&mut self) -> &mut <Self as std::ops::Deref>::Target { return &mut self.pt; }
+}
 
 #[derive(Clone,PartialEq,Eq)]
 pub enum Compass {  // XCOM-like compass directions
@@ -125,8 +141,8 @@ pub fn to_swerve(from:&[i32;2], to:&[i32;2]) -> Option<(Compass,Option<Compass>)
 
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct Rect {
-    _origin: [i32;2],
-    _dim: [usize;2]
+    _origin:Point<i32>,
+    _dim:Point<usize>
 }
 
 impl AddAssign<[i32;2]> for Rect {
@@ -137,10 +153,7 @@ impl AddAssign<[i32;2]> for Rect {
 }
 
 impl AddAssign<&[i32;2]> for Rect {
-    fn add_assign(&mut self, src: &[i32;2]) {
-        self._origin[0] += (*src)[0];
-        self._origin[1] += (*src)[1];
-    }
+    fn add_assign(&mut self, src: &[i32;2]) { self.add_assign(*src); }
 }
 
 impl Rect {
@@ -182,7 +195,7 @@ impl Rect {
     }
 
     pub fn new(o:[i32;2], d:[usize;2]) -> Rect {
-        return Rect{_origin:o, _dim:d};
+        return Rect{_origin:Point{pt:o}, _dim:Point{pt:d}};
     }
 
     pub fn split<R: Rng + ?Sized>(&mut self, r:&mut R, dir:Compass, lb:usize, ub:usize) -> Option<Rect> {
@@ -223,7 +236,7 @@ impl Rect {
         let mut ret = self._origin.clone();
         Rect::cross_subassign(&mut ret[0], &mut delta[0]);
         Rect::cross_subassign(&mut ret[1], &mut delta[1]);
-        return ret;
+        return *ret;
     }
 
     pub fn anchor(&self, dir:Compass) -> [i32;2] {
@@ -262,7 +275,7 @@ impl Rect {
             },
             Compass::NW => {}   // no-op
         }
-        return ret;
+        return *ret;
     }
     pub fn align_to(&mut self, my_dir:Compass, other:&Rect, other_dir:Compass) {
         let my_guess = self.anchor(my_dir);
@@ -472,6 +485,12 @@ impl Add<[i32;2]> for Location {
     }
 }
 
+impl Add<Compass> for Location {
+    type Output = Location;
+
+    fn add(self, delta:Compass) -> Self::Output { return self.add(<[i32;2]>::from(delta)); }
+}
+
 impl AddAssign<[i32;2]> for Location {
     fn add_assign(&mut self, delta:[i32;2]) {
         self.pos[0] += delta[0];
@@ -480,10 +499,11 @@ impl AddAssign<[i32;2]> for Location {
 }
 
 impl AddAssign<&[i32;2]> for Location {
-    fn add_assign(&mut self, delta:&[i32;2]) {
-        self.pos[0] += (*delta)[0];
-        self.pos[1] += (*delta)[1];
-    }
+    fn add_assign(&mut self, delta:&[i32;2]) { self.add_assign(*delta); }
+}
+
+impl AddAssign<Compass> for Location {
+    fn add_assign(&mut self, delta:Compass) { self.add_assign(<[i32;2]>::from(delta)); }
 }
 
 impl Location {

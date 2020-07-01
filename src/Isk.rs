@@ -386,7 +386,7 @@ impl World {
         let mut ret = Vec::<Location>::new();
         // \todo properly iterate over all directions; cf crates.io/enum-iterator, https://github.com/rust-lang/rust/issues/5417 (declined by devteam)
         for i in 0..8 {
-            let test = o.clone()+<[i32;2]>::from(Compass::try_from(i).unwrap());
+            let test = o.clone()+Compass::try_from(i).unwrap();
             if let Some(obj) = test.get_map_object() {
                 if let Some(_dest) = self.is_closable_map_object(&obj) {
                     ret.push(test);
@@ -591,13 +591,13 @@ impl World {
         {
         let mut m = oc_ryacho_ground_floor.borrow_mut();
         _tower_nw.draw(&mut m);
-        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_nw.rect.anchor(Compass::E))+<[i32;2]>::from(Compass::W)))));
-        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_nw.rect.anchor(Compass::S))+<[i32;2]>::from(Compass::N)))));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_nw.rect.anchor(Compass::E))+Compass::W))));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_nw.rect.anchor(Compass::S))+Compass::N))));
         _tower_ne.draw(&mut m);
         m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_ne.rect.anchor(Compass::W))))));
-        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_ne.rect.anchor(Compass::S))+<[i32;2]>::from(Compass::N)))));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_ne.rect.anchor(Compass::S))+Compass::N))));
         _tower_sw.draw(&mut m);
-        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_sw.rect.anchor(Compass::E))+<[i32;2]>::from(Compass::W)))));
+        m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_sw.rect.anchor(Compass::E))+Compass::W))));
         m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_sw.rect.anchor(Compass::N))))));
         _tower_se.draw(&mut m);
         m.set_map_object(Rc::new(RefCell::new(MapObject::new(_t_closed_door.clone(),Location::new(&oc_ryacho_ground_floor,_tower_se.rect.anchor(Compass::W))))));

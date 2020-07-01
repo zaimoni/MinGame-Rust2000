@@ -21,6 +21,11 @@ const MESSAGE_BAR_HEIGHT: i32 = 7;
 const SCREEN_WIDTH: i32 = VIEW+SIDEBAR_WIDTH;
 const SCREEN_HEIGHT: i32 = VIEW+MESSAGE_BAR_HEIGHT;
 
+// work around absence of proper constructors in Rust
+pub trait UnaryConstruct<T> {
+    fn new(src:T) -> Self;
+}
+
 // not possible to reuse Rust STD library types for our own errors
 // modeled on std::num::TryFromIntError
 #[derive(Clone,Debug,PartialEq,Eq)]

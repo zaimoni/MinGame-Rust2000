@@ -22,6 +22,14 @@ impl<T> DerefMut for Point<T> {
     fn deref_mut(&mut self) -> &mut <Self as std::ops::Deref>::Target { return &mut self.pt; }
 }
 
+impl<T:std::clone::Clone> UnaryConstruct<&[T;2]> for Point<T> {
+    fn new(src:&[T;2]) -> Self { return Self{pt:(*src).clone()}; }
+}
+
+impl<T> UnaryConstruct<[T;2]> for Point<T> {
+    fn new(src:[T;2]) -> Self { return Self{pt:src}; }
+}
+
 #[derive(Clone,PartialEq,Eq)]
 pub enum Compass {  // XCOM-like compass directions
     N,

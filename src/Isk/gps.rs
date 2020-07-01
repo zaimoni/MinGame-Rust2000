@@ -1,7 +1,8 @@
 use crate::isk::*;
+use crate::isk::Norm;
 use rand::Rng;
 use std::convert::TryFrom;
-use std::ops::{Add,AddAssign,Mul};
+use std::ops::{Add,AddAssign,Mul,Sub};
 use std::ops::{Deref,DerefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -35,6 +36,25 @@ impl Add<Point<i64>> for Point<i32> {
     fn add(self, src: Point<i64>) -> Point<i64> {
         return Point{pt:[i64::from(self[0]) + src[0], i64::from(self[1])+src[1]]};
     }
+}
+
+impl Sub for Point<i32> {
+    type Output = Point<i64>;
+    fn sub(self, src:Point<i32>) -> Point<i64> {
+        return Point{pt:[i64::from(self[0])-i64::from(src[0]), i64::from(self[1])-i64::from(src[1])]};
+    }
+}
+
+impl Sub for &Point<i32> {
+    type Output = Point<i64>;
+    fn sub(self, src:&Point<i32>) -> Point<i64> {
+        return Point{pt:[i64::from(self[0])-i64::from(src[0]), i64::from(self[1])-i64::from(src[1])]};
+    }
+}
+
+impl<T:Norm> Norm for Point<T> {
+    type Output = Point<<T as Norm>::Output>;
+    fn norm(&self) -> Self::Output { return Point{pt:[self[0].norm(), self[1].norm()]}; }
 }
 
 #[derive(Clone,PartialEq,Eq)]
@@ -107,13 +127,21 @@ impl TryFrom<i32> for Compass {
 
 impl Mul<Compass> for u32 {
     type Output = Point<i64>;
-    fn mul(self, src: Compass) -> Point<i64> {
+    fn mul(self, src: Compass) -> Self::Output {
         let tmp = <[i32;2]>::from(src);
         return Point{pt:[i64::from(tmp[0])*i64::from(self), i64::from(tmp[1])*i64::from(self)]};
     }
 }
 
-fn _diag(code:i32) -> Compass {   // would prefer private but Rust doesn't have proper access controls
+impl Mul<Compass> for u64 {
+    type Output = Point<i64>;
+    fn mul(self, src: Compass) -> Self::Output {
+        let tmp = <[i32;2]>::from(src);
+        return Point{pt:[i64::from(tmp[0])*i64::try_from(self).unwrap(), i64::from(tmp[1])*i64::try_from(self).unwrap()]};
+    }
+}
+
+fn _diag(code:i8) -> Compass {   // would prefer private but Rust doesn't have proper access controls
     match code {
         -4 => { return Compass::NW; },
         -2 => { return Compass::SW; },
@@ -123,10 +151,10 @@ fn _diag(code:i32) -> Compass {   // would prefer private but Rust doesn't have 
     }
 }
 
-pub fn to_swerve(from:&[i32;2], to:&[i32;2]) -> Option<(Compass,Option<Compass>)> {
-        let delta = [to[0] - from[0], to[1] - from[1]];
+pub fn to_swerve(from:&Point<i32>, to:&Point<i32>) -> Option<(Compass,Option<Compass>)> {
+        let delta = to - from;
         let delta_sgn = [delta[0].signum(), delta[1].signum()];
-        let dir_code = 3*delta_sgn[0]+delta_sgn[1];
+        let dir_code = i8::try_from(3*delta_sgn[0]+delta_sgn[1]).unwrap();
         match dir_code {
             -3 => { return Some((Compass::W, None)); },
             -1 => { return Some((Compass::N, None)); },
@@ -135,7 +163,7 @@ pub fn to_swerve(from:&[i32;2], to:&[i32;2]) -> Option<(Compass,Option<Compass>)
             3 => { return Some((Compass::E, None)); },
             _ => {}
         }
-        let abs_delta = [delta[0].norm(), delta[1].norm()];
+        let abs_delta = delta.norm();
         if abs_delta[0] == abs_delta[1] { return Some((_diag(dir_code),None)); }
         let scale2 = 2*min(abs_delta[0], abs_delta[1]);
         let scale1 = max(abs_delta[0], abs_delta[1]);

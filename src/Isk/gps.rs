@@ -1,7 +1,7 @@
 use crate::isk::*;
 use rand::Rng;
 use std::convert::TryFrom;
-use std::ops::{Add,AddAssign};
+use std::ops::{Add,AddAssign,Mul};
 use std::ops::{Deref,DerefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -28,6 +28,13 @@ impl<T:std::clone::Clone> UnaryConstruct<&[T;2]> for Point<T> {
 
 impl<T> UnaryConstruct<[T;2]> for Point<T> {
     fn new(src:[T;2]) -> Self { return Self{pt:src}; }
+}
+
+impl Add<Point<i64>> for Point<i32> {
+    type Output = Point<i64>;
+    fn add(self, src: Point<i64>) -> Point<i64> {
+        return Point{pt:[i64::from(self[0]) + src[0], i64::from(self[1])+src[1]]};
+    }
 }
 
 #[derive(Clone,PartialEq,Eq)]
@@ -95,6 +102,14 @@ impl TryFrom<i32> for Compass {
             7 => { return Ok(Compass::NW); },
             _ => { return Err(Error{desc:"out of range; try %8 before converting to Compass".to_string()}); }
         }
+    }
+}
+
+impl Mul<Compass> for u32 {
+    type Output = Point<i64>;
+    fn mul(self, src: Compass) -> Point<i64> {
+        let tmp = <[i32;2]>::from(src);
+        return Point{pt:[i64::from(tmp[0])*i64::from(self), i64::from(tmp[1])*i64::from(self)]};
     }
 }
 

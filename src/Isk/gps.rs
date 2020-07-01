@@ -74,6 +74,55 @@ impl TryFrom<i32> for Compass {
     }
 }
 
+fn _diag(code:i32) -> Compass {   // would prefer private but Rust doesn't have proper access controls
+    match code {
+        -4 => { return Compass::NW; },
+        -2 => { return Compass::SW; },
+        2 => { return Compass::NE; },
+        4 => { return Compass::SE; },
+        _ => unreachable!()
+    }
+}
+
+pub fn to_swerve(from:&[i32;2], to:&[i32;2]) -> Option<(Compass,Option<Compass>)> {
+        let delta = [to[0] - from[0], to[1] - from[1]];
+        let delta_sgn = [delta[0].signum(), delta[1].signum()];
+        let dir_code = 3*delta_sgn[0]+delta_sgn[1];
+        match dir_code {
+            -3 => { return Some((Compass::W, None)); },
+            -1 => { return Some((Compass::N, None)); },
+            0 => { return None; },
+            1 => { return Some((Compass::S, None)); },
+            3 => { return Some((Compass::E, None)); },
+            _ => {}
+        }
+        let abs_delta = [delta[0].norm(), delta[1].norm()];
+        if abs_delta[0] == abs_delta[1] { return Some((_diag(dir_code),None)); }
+        let scale2 = 2*min(abs_delta[0], abs_delta[1]);
+        let scale1 = max(abs_delta[0], abs_delta[1]);
+        // the pathfinder would need to do more work here.
+        if scale2 < scale1 { return Some((_diag(dir_code),None)); }
+        let mut alt:Option<Compass> = None;
+        if scale2 == scale1 { alt = Some(_diag(dir_code)); } // Chess knight move: +/- 1, +/-2 or vice versa.
+        if abs_delta[0]<abs_delta[1] { // y dominant: N/S
+            match dir_code {
+                -4 => { return Some((Compass::N,alt)); },
+                -2 => {  return Some((Compass::S,alt)); },
+                2 => { return Some((Compass::N,alt)); },
+                4 => {  return Some((Compass::S,alt)); },
+                _ => unreachable!()
+            }
+        }
+        // x dominant: E/W
+        match dir_code {
+            -4 => { return Some((Compass::W,alt)); },
+            -2 => {  return Some((Compass::W,alt)); },
+            2 => { return Some((Compass::E,alt)); },
+            4 => {  return Some((Compass::E,alt)); },
+            _ => unreachable!()
+        }
+}
+
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct Rect {
     _origin: [i32;2],

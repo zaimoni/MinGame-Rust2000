@@ -1,4 +1,5 @@
 pub mod gps;
+pub mod los;
 
 use crate::isk::gps::*;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -6,6 +7,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use tcod::colors;
 use tcod::console::{Root , Offscreen, Console, FontLayout, FontType, BackgroundFlag, blit};
 use tcod::input::Key;
+use std::cmp::{min,max};
 use std::cell::RefCell;
 use std::convert::TryFrom;
 use std::rc::Rc;
@@ -33,15 +35,15 @@ impl std::fmt::Display for Error {
     }
 }
 
-// these will need templating
-pub fn min(x:i32, y:i32) -> i32 {
-    if x < y { return x; }
-    return y;
+pub trait Norm<U> {
+    fn norm(&self) -> U;
 }
 
-pub fn max(x:i32, y:i32) -> i32 {
-    if x < y { return y; }
-    return x;
+impl Norm<u32> for i32 {
+    fn norm(&self) -> u32 {
+        if 0 <= *self { return u32::try_from(*self).unwrap(); }
+        return u32::try_from(-(self+1)).unwrap()+1;
+    }
 }
 
 // since Rust intentionally does not have function overloading, we have to obfuscate other data structures to compensate

@@ -1,5 +1,5 @@
 use crate::isk::*;
-use crate::isk::Norm;
+use crate::isk::numerics::Norm;
 use rand::Rng;
 use std::convert::TryFrom;
 use std::ops::{Add,AddAssign,Mul,Sub};

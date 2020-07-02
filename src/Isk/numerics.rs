@@ -44,4 +44,77 @@ impl HaveLT<u32> for u64 {
     }
 }
 
+pub trait Rearrange<RHS=Self> {
+    fn rearrange_sum(&mut self, rhs:&mut RHS);
+    fn AddAssign(&mut self, rhs:RHS); // should be compile-time option whether to clamp, or hard-error, on overflow
+}
 
+impl Rearrange<usize> for i32 {
+    fn rearrange_sum(&mut self, rhs:&mut usize) {
+        if 0 < *rhs {
+            if 0 > *self {    // prevent working with i32::MIN
+                *self += 1;
+                *rhs += 1;
+            }
+            if 0 > *self {
+                let test = usize::try_from(-*self).unwrap();  // not really...i32::MIN overflows
+                if test > *rhs {
+                    *self += i32::try_from(*rhs).unwrap();
+                    *rhs = 0;
+                    return;
+                }
+                *rhs -= test;
+                *self = 0;
+            }
+            if i32::MAX > *self {
+                let tolerance = i32::MAX - *self;
+                let test = i32::try_from(*rhs);
+                if let Ok(val) = test {
+                    if tolerance >= val {
+                        *self += val;
+                        *rhs = 0;
+                        return;
+                    } else {
+                        *rhs -= usize::try_from(tolerance).unwrap();
+                        *self = i32::MAX;
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    fn AddAssign(&mut self, mut rhs:usize) {
+        if 0 < rhs {
+            if 0 > *self {    // prevent working with i32::MIN
+                *self += 1;
+                rhs += 1;
+            }
+            if 0 > *self {
+                let test = usize::try_from(-*self).unwrap();  // not really...i32::MIN overflows
+                if test > rhs {
+                    *self += i32::try_from(rhs).unwrap();
+                    rhs = 0;
+                    return;
+                }
+                rhs -= test;
+                *self = 0;
+            }
+            if i32::MAX > *self {
+                let tolerance = i32::MAX - *self;
+                let test = i32::try_from(rhs);
+                if let Ok(val) = test {
+                    if tolerance >= val {
+                        *self += val;
+                        rhs = 0;
+                        return;
+                    } else {
+                        rhs -= usize::try_from(tolerance).unwrap();
+                        *self = i32::MAX;
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}

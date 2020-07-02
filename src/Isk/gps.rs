@@ -1,5 +1,5 @@
 use crate::isk::*;
-use crate::isk::numerics::Norm;
+use crate::isk::numerics::{Norm,Rearrange};
 use rand::Rng;
 use std::convert::TryFrom;
 use std::ops::{Add,AddAssign,Mul,Sub};
@@ -211,40 +211,6 @@ impl Rect {
     pub fn width(&self) -> usize { return self._dim[0]; }
     pub fn height(&self) -> usize { return self._dim[1]; }
 
-    fn cross_subassign(lhs:&mut i32, rhs:&mut usize) {
-        if 0 < *rhs {
-            if 0 > *lhs {    // prevent working with i32::MIN
-                *lhs += 1;
-                *rhs += 1;
-            }
-            if 0 > *lhs {
-                let test = usize::try_from(-*lhs).unwrap();  // not really...i32::MIN overflows
-                if test > *rhs {
-                    *lhs += i32::try_from(*rhs).unwrap();
-                    *rhs = 0;
-                    return;
-                }
-                *rhs -= test;
-                *lhs = 0;
-            }
-            if i32::MAX > *lhs {
-                let tolerance = i32::MAX - *lhs;
-                let test = i32::try_from(*rhs);
-                if let Ok(val) = test {
-                    if tolerance >= val {
-                        *lhs += val;
-                        *rhs = 0;
-                        return;
-                    } else {
-                        *rhs -= usize::try_from(tolerance).unwrap();
-                        *lhs = i32::MAX;
-                        return;
-                    }
-                }
-            }
-        }
-    }
-
     pub fn new(o:[i32;2], d:[usize;2]) -> Rect {
         return Rect{_origin:Point{pt:o}, _dim:Point{pt:d}};
     }
@@ -285,45 +251,33 @@ impl Rect {
     pub fn center(&self) -> [i32;2] {
         let mut delta = [self._dim[0]/2, self._dim[1]/2];
         let mut ret = self._origin.clone();
-        Rect::cross_subassign(&mut ret[0], &mut delta[0]);
-        Rect::cross_subassign(&mut ret[1], &mut delta[1]);
+        ret[0].rearrange_sum(&mut delta[0]);
+        ret[1].rearrange_sum(&mut delta[1]);
         return *ret;
     }
 
     pub fn anchor(&self, dir:Compass) -> [i32;2] {
         let mut ret = self._origin.clone();
         match dir {
-            Compass::N => {
-                let mut delta = self._dim[0]/2;
-                Rect::cross_subassign(&mut ret[0], &mut delta);
-            },
-            Compass::NE => {
-                let mut delta = self._dim[0];
-                Rect::cross_subassign(&mut ret[0], &mut delta);
-            },
+            Compass::N => { ret[0].AddAssign(self._dim[0]/2); },
+            Compass::NE => { ret[0].AddAssign(self._dim[0]); },
             Compass::E => {
                 let mut delta = [self._dim[0], self._dim[1]/2];
-                Rect::cross_subassign(&mut ret[0], &mut delta[0]);
-                Rect::cross_subassign(&mut ret[1], &mut delta[1]);
+                ret[0].rearrange_sum(&mut delta[0]);
+                ret[1].rearrange_sum(&mut delta[1]);
             },
             Compass::SE => {
                 let mut delta = [self._dim[0], self._dim[1]];
-                Rect::cross_subassign(&mut ret[0], &mut delta[0]);
-                Rect::cross_subassign(&mut ret[1], &mut delta[1]);
+                ret[0].rearrange_sum(&mut delta[0]);
+                ret[1].rearrange_sum(&mut delta[1]);
             },
             Compass::S => {
                 let mut delta = [self._dim[0]/2, self._dim[1]];
-                Rect::cross_subassign(&mut ret[0], &mut delta[0]);
-                Rect::cross_subassign(&mut ret[1], &mut delta[1]);
+                ret[0].rearrange_sum(&mut delta[0]);
+                ret[1].rearrange_sum(&mut delta[1]);
             },
-            Compass::SW => {
-                let mut delta = self._dim[1];
-                Rect::cross_subassign(&mut ret[1], &mut delta);
-            },
-            Compass::W => {
-                let mut delta = self._dim[1]/2;
-                Rect::cross_subassign(&mut ret[1], &mut delta);
-            },
+            Compass::SW => { ret[1].AddAssign(self._dim[1]); },
+            Compass::W => { ret[1].AddAssign(self._dim[1]/2); },
             Compass::NW => {}   // no-op
         }
         return *ret;

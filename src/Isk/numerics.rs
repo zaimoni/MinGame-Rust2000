@@ -44,6 +44,19 @@ impl HaveLT<u32> for u64 {
     }
 }
 
+impl HaveLT<u32> for i64 {
+    type MinType = i64;
+    type MaxType = i64; // u64 hard-errors (recheck when upgrading Rust target)
+    fn Min(&self, r:u32) -> Self::MinType {
+        if 0 >= *self { return *self; }
+        return Self::MinType::from(r);
+    }
+    fn Max(&self, r:u32) -> Self::MaxType {
+        if 0 >= *self { return Self::MaxType::from(r); }
+        return *self;
+    }
+}
+
 pub trait Rearrange<RHS=Self> {
     fn rearrange_sum(&mut self, rhs:&mut RHS);
     fn AddAssign(&mut self, rhs:RHS); // should be compile-time option whether to clamp, or hard-error, on overflow
@@ -94,7 +107,7 @@ impl Rearrange<usize> for i32 {
                 let test = usize::try_from(-*self).unwrap();  // not really...i32::MIN overflows
                 if test > rhs {
                     *self += i32::try_from(rhs).unwrap();
-                    rhs = 0;
+//                  rhs = 0;
                     return;
                 }
                 rhs -= test;
@@ -106,10 +119,10 @@ impl Rearrange<usize> for i32 {
                 if let Ok(val) = test {
                     if tolerance >= val {
                         *self += val;
-                        rhs = 0;
+//                      rhs = 0;
                         return;
                     } else {
-                        rhs -= usize::try_from(tolerance).unwrap();
+//                      rhs -= usize::try_from(tolerance).unwrap();
                         *self = i32::MAX;
                         return;
                     }

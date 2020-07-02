@@ -2,7 +2,7 @@ use crate::isk::*;
 use crate::isk::numerics::{Norm,Rearrange};
 use rand::Rng;
 use std::convert::TryFrom;
-use std::ops::{Add,AddAssign,Mul,Sub};
+use std::ops::{Add,AddAssign,Mul,Sub,SubAssign};
 use std::ops::{Deref,DerefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -31,7 +31,14 @@ impl<T> UnaryConstruct<[T;2]> for Point<T> {
     fn new(src:[T;2]) -> Self { return Self{pt:src}; }
 }
 
-impl Add<Point<i64>> for Point<i32> {
+impl Add for Point<i32> {
+    type Output = Point<i64>;
+    fn add(self, src: Point<i32>) -> Point<i64> {
+        return Point{pt:[i64::from(self[0]) + i64::from(src[0]), i64::from(self[1])+i64::from(src[1])]};
+    }
+}
+
+impl Add<Point<i64>> for &Point<i32> {
     type Output = Point<i64>;
     fn add(self, src: Point<i64>) -> Point<i64> {
         return Point{pt:[i64::from(self[0]) + src[0], i64::from(self[1])+src[1]]};
@@ -49,6 +56,27 @@ impl Sub for &Point<i32> {
     type Output = Point<i64>;
     fn sub(self, src:&Point<i32>) -> Point<i64> {
         return Point{pt:[i64::from(self[0])-i64::from(src[0]), i64::from(self[1])-i64::from(src[1])]};
+    }
+}
+
+impl Sub<Point<i64>> for &Point<i32> {
+    type Output = Point<i64>;
+    fn sub(self, src:Point<i64>) -> Point<i64> {
+        return Point{pt:[i64::from(self[0])-src[0], i64::from(self[1])-src[1]]};
+    }
+}
+
+impl Sub<&Point<i64>> for &Point<i32> {
+    type Output = Point<i64>;
+    fn sub(self, src:&Point<i64>) -> Point<i64> {
+        return Point{pt:[i64::from(self[0])-src[0], i64::from(self[1])-src[1]]};
+    }
+}
+
+impl Sub<&Point<i32>> for &Point<i64> {
+    type Output = Point<i64>;
+    fn sub(self, src:&Point<i32>) -> Point<i64> {
+        return Point{pt:[self[0]-i64::from(src[0]), self[1]-i64::from(src[1])]};
     }
 }
 
@@ -84,6 +112,7 @@ impl From<Compass> for i32 {
     }
 }
 
+// XXX arguably should be using a singleton here for reference data
 impl From<Compass> for [i32;2] {
     fn from(src: Compass) -> [i32;2] {
         match src {
@@ -99,11 +128,50 @@ impl From<Compass> for [i32;2] {
     }
 }
 
+impl From<Compass> for Point<i32> {
+    fn from(src: Compass) -> Point<i32> {
+        match src {
+            Compass::N => { return Point::new([0, -1]); },
+            Compass::NE => { return Point::new([1, -1]); },
+            Compass::E => { return Point::new([1, 0]); },
+            Compass::SE => { return Point::new([1, 1]); },
+            Compass::S => { return Point::new([0, 1]); },
+            Compass::SW => { return Point::new([-1, 1]); },
+            Compass::W => { return Point::new([-1, 0]); },
+            Compass::NW => { return Point::new([-1, -1]); },
+        }
+    }
+}
+
+impl Add<Compass> for Point<i32> {
+    type Output = Point<i32>;
+    fn add(self, src: Compass) -> Self::Output {
+        let x = <[i32;2]>::from(src);
+        return Point{pt:[self[0] + x[0], self[1]+x[1]]};
+    }
+}
+
 impl AddAssign<Compass> for [i32;2] {
     fn add_assign(&mut self, src: Compass) {
         let x = <[i32;2]>::from(src);
         self[0] += x[0];
         self[1] += x[1];
+    }
+}
+
+impl AddAssign<Compass> for Point<i32> {
+    fn add_assign(&mut self, src: Compass) {
+        let x = <[i32;2]>::from(src);
+        self[0] += x[0];
+        self[1] += x[1];
+    }
+}
+
+impl SubAssign<Compass> for Point<i32> {
+    fn sub_assign(&mut self, src: Compass) {
+        let x = <[i32;2]>::from(src);
+        self[0] -= x[0];
+        self[1] -= x[1];
     }
 }
 
@@ -125,6 +193,39 @@ impl TryFrom<i32> for Compass {
     }
 }
 
+impl TryFrom<Point<i64>> for Compass {
+    type Error = (); // no information needed, it just didn't invert
+
+    fn try_from(src:Point<i64>) -> Result<Compass,Self::Error> {
+        match src[0] {
+            -1 => {
+                match src[1] {
+                    -1 => { return Ok(Compass::NW); },
+                    0 => { return Ok(Compass::W); },
+                    1 => { return Ok(Compass::SW); },
+                    _ => { return Err(()); }
+                }
+            },
+            0 => {
+                match src[1] {
+                    -1 => { return Ok(Compass::N); },
+                    1 => { return Ok(Compass::S); },
+                    _ => { return Err(()); }
+                }
+            },
+            1 => {
+                match src[1] {
+                    -1 => { return Ok(Compass::NE); },
+                    0 => { return Ok(Compass::E); },
+                    1 => { return Ok(Compass::SE); },
+                    _ => { return Err(()); }
+                }
+            },
+            _ => { return Err(()); }
+        }
+    }
+}
+
 impl Mul<Compass> for u32 {
     type Output = Point<i64>;
     fn mul(self, src: Compass) -> Self::Output {
@@ -141,6 +242,15 @@ impl Mul<Compass> for u64 {
     }
 }
 
+impl Mul<Compass> for i64 {
+    type Output = Point<i64>;
+    fn mul(self, src: Compass) -> Self::Output {
+        let tmp = <[i32;2]>::from(src);
+        return Point{pt:[i64::from(tmp[0])*self, i64::from(tmp[1])*self]};
+    }
+}
+
+
 fn _diag(code:i8) -> Compass {   // would prefer private but Rust doesn't have proper access controls
     match code {
         -4 => { return Compass::NW; },
@@ -151,8 +261,14 @@ fn _diag(code:i8) -> Compass {   // would prefer private but Rust doesn't have p
     }
 }
 
-pub fn to_swerve(from:&Point<i32>, to:&Point<i32>) -> Option<(Compass,Option<Compass>)> {
-        let delta = to - from;
+pub trait Pathfinder<RHS=Self> {
+    fn compass_heading_full(&self, to:&RHS) -> Option<(Compass,Option<Compass>)>;
+    fn compass_heading(&self, to:&RHS) -> Option<Compass>;
+}
+
+impl Pathfinder for Point<i32> {
+    fn compass_heading_full(&self, to:&Point<i32>) -> Option<(Compass,Option<Compass>)> {
+        let delta = to - self;
         let delta_sgn = [delta[0].signum(), delta[1].signum()];
         let dir_code = i8::try_from(3*delta_sgn[0]+delta_sgn[1]).unwrap();
         match dir_code {
@@ -174,20 +290,136 @@ pub fn to_swerve(from:&Point<i32>, to:&Point<i32>) -> Option<(Compass,Option<Com
         if abs_delta[0]<abs_delta[1] { // y dominant: N/S
             match dir_code {
                 -4 => { return Some((Compass::N,alt)); },
-                -2 => {  return Some((Compass::S,alt)); },
+                -2 => { return Some((Compass::S,alt)); },
                 2 => { return Some((Compass::N,alt)); },
-                4 => {  return Some((Compass::S,alt)); },
+                4 => { return Some((Compass::S,alt)); },
                 _ => unreachable!()
             }
         }
         // x dominant: E/W
         match dir_code {
             -4 => { return Some((Compass::W,alt)); },
-            -2 => {  return Some((Compass::W,alt)); },
+            -2 => { return Some((Compass::W,alt)); },
             2 => { return Some((Compass::E,alt)); },
-            4 => {  return Some((Compass::E,alt)); },
+            4 => { return Some((Compass::E,alt)); },
             _ => unreachable!()
         }
+    }
+
+    fn compass_heading(&self, to:&Point<i32>) -> Option<Compass> {
+        let delta = to - self;
+        let delta_sgn = [delta[0].signum(), delta[1].signum()];
+        let dir_code = i8::try_from(3*delta_sgn[0]+delta_sgn[1]).unwrap();
+        match dir_code {
+            -3 => { return Some(Compass::W); },
+            -1 => { return Some(Compass::N); },
+            0 => { return None; },
+            1 => { return Some(Compass::S); },
+            3 => { return Some(Compass::E); },
+            _ => {}
+        }
+        let abs_delta = delta.norm();
+        if abs_delta[0] == abs_delta[1] { return Some(_diag(dir_code)); }
+        let scale2 = 2*min(abs_delta[0], abs_delta[1]);
+        let scale1 = max(abs_delta[0], abs_delta[1]);
+        // the pathfinder would need to do more work here.
+        if scale2 < scale1 { return Some(_diag(dir_code)); }
+        if abs_delta[0]<abs_delta[1] { // y dominant: N/S
+            match dir_code {
+                -4 => { return Some(Compass::N); },
+                -2 => { return Some(Compass::S); },
+                2 => { return Some(Compass::N); },
+                4 => { return Some(Compass::S); },
+                _ => unreachable!()
+            }
+        }
+        // x dominant: E/W
+        match dir_code {
+            -4 => { return Some(Compass::W); },
+            -2 => { return Some(Compass::W); },
+            2 => { return Some(Compass::E); },
+            4 => { return Some(Compass::E); },
+            _ => unreachable!()
+        }
+    }
+}
+
+impl Pathfinder<Point<i32>> for Point<i64> {
+    fn compass_heading_full(&self, to:&Point<i32>) -> Option<(Compass,Option<Compass>)> {
+        let delta = to - self;
+        let delta_sgn = [delta[0].signum(), delta[1].signum()];
+        let dir_code = i8::try_from(3*delta_sgn[0]+delta_sgn[1]).unwrap();
+        match dir_code {
+            -3 => { return Some((Compass::W, None)); },
+            -1 => { return Some((Compass::N, None)); },
+            0 => { return None; },
+            1 => { return Some((Compass::S, None)); },
+            3 => { return Some((Compass::E, None)); },
+            _ => {}
+        }
+        let abs_delta = delta.norm();
+        if abs_delta[0] == abs_delta[1] { return Some((_diag(dir_code),None)); }
+        let scale2 = 2*min(abs_delta[0], abs_delta[1]);
+        let scale1 = max(abs_delta[0], abs_delta[1]);
+        // the pathfinder would need to do more work here.
+        if scale2 < scale1 { return Some((_diag(dir_code),None)); }
+        let mut alt:Option<Compass> = None;
+        if scale2 == scale1 { alt = Some(_diag(dir_code)); } // Chess knight move: +/- 1, +/-2 or vice versa.
+        if abs_delta[0]<abs_delta[1] { // y dominant: N/S
+            match dir_code {
+                -4 => { return Some((Compass::N,alt)); },
+                -2 => { return Some((Compass::S,alt)); },
+                2 => { return Some((Compass::N,alt)); },
+                4 => { return Some((Compass::S,alt)); },
+                _ => unreachable!()
+            }
+        }
+        // x dominant: E/W
+        match dir_code {
+            -4 => { return Some((Compass::W,alt)); },
+            -2 => { return Some((Compass::W,alt)); },
+            2 => { return Some((Compass::E,alt)); },
+            4 => { return Some((Compass::E,alt)); },
+            _ => unreachable!()
+        }
+    }
+
+    fn compass_heading(&self, to:&Point<i32>) -> Option<Compass> {
+        let delta = to - self;
+        let delta_sgn = [delta[0].signum(), delta[1].signum()];
+        let dir_code = i8::try_from(3*delta_sgn[0]+delta_sgn[1]).unwrap();
+        match dir_code {
+            -3 => { return Some(Compass::W); },
+            -1 => { return Some(Compass::N); },
+            0 => { return None; },
+            1 => { return Some(Compass::S); },
+            3 => { return Some(Compass::E); },
+            _ => {}
+        }
+        let abs_delta = delta.norm();
+        if abs_delta[0] == abs_delta[1] { return Some(_diag(dir_code)); }
+        let scale2 = 2*min(abs_delta[0], abs_delta[1]);
+        let scale1 = max(abs_delta[0], abs_delta[1]);
+        // the pathfinder would need to do more work here.
+        if scale2 < scale1 { return Some(_diag(dir_code)); }
+        if abs_delta[0]<abs_delta[1] { // y dominant: N/S
+            match dir_code {
+                -4 => { return Some(Compass::N); },
+                -2 => { return Some(Compass::S); },
+                2 => { return Some(Compass::N); },
+                4 => { return Some(Compass::S); },
+                _ => unreachable!()
+            }
+        }
+        // x dominant: E/W
+        match dir_code {
+            -4 => { return Some(Compass::W); },
+            -2 => { return Some(Compass::W); },
+            2 => { return Some(Compass::E); },
+            4 => { return Some(Compass::E); },
+            _ => unreachable!()
+        }
+    }
 }
 
 #[derive(Debug,Clone,PartialEq,Eq)]

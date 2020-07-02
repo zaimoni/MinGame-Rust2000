@@ -75,7 +75,7 @@ impl Terrain {
 
 // member function overloading assistants
 trait Draw<T> {
-    fn draw(&mut self, scr_loc: &[i32;2], img : T); // intended interpretation: draw img starting at coordinate scr_loc
+    fn draw(&mut self, scr_loc: &[i32;2], img : T, in_sight:bool); // intended interpretation: draw img starting at coordinate scr_loc
 }
 
 pub struct DisplayManager {
@@ -115,10 +115,11 @@ impl DisplayManager {
 
     // \todo set background variants of above
     // SFML port would also allow tile background
-    pub fn set_bg(&mut self, scr_loc: &[i32;2], bg: BackgroundSpec) {
+    pub fn set_bg(&mut self, scr_loc: &[i32;2], bg: BackgroundSpec, in_sight:bool) {
         if DisplayManager::in_bounds(scr_loc) {
             match bg {
-                Ok(col) => {
+                Ok(mut col) => {
+                    if !in_sight { col = col*0.75; }
                     self.offscr.set_char_background(scr_loc[0], scr_loc[1], col , BackgroundFlag::Set);
                 },
                 _ => {debug_assert!(false,"image background not implemented")},
@@ -134,12 +135,13 @@ impl DisplayManager {
 
 // SFML port would also allow tiles
 impl Draw<TileSpec> for DisplayManager {
-    fn draw(&mut self, scr_loc: &[i32;2], img : TileSpec) {
+    fn draw(&mut self, scr_loc: &[i32;2], img : TileSpec, in_sight:bool) {
         if DisplayManager::in_bounds(scr_loc) {
             match img {
                 Ok(t) => {
                     match t.c {
-                        Some(col) => {
+                        Some(mut col) => {
+                            if !in_sight { col = col*0.75; }
                             self.last_fg = col;
                             self.offscr.set_default_foreground(self.last_fg);
                         },
@@ -154,11 +156,11 @@ impl Draw<TileSpec> for DisplayManager {
 }
 
 impl Draw<String> for DisplayManager {
-    fn draw(&mut self, scr_loc: &[i32;2], src:String) {
+    fn draw(&mut self, scr_loc: &[i32;2], src:String, in_sight:bool) {
         if DisplayManager::in_bounds(scr_loc) {
             let mut pt = scr_loc.clone();
             for c in src.chars() {
-                self.draw(&pt, Ok(CharSpec{img:c, c:Some(colors::WHITE)}));
+                self.draw(&pt, Ok(CharSpec{img:c, c:Some(colors::WHITE)}), in_sight);
                 pt[0] += 1;
                 if !DisplayManager::in_bounds(&pt) { break; }
             }
@@ -442,14 +444,33 @@ impl World {
         return tl;
     }
 
+    // \todo exceptionally GC-thrashing
+    // * need variants that just return bool in the Map class
+    // * need backing caches within Map class
+    pub fn los(&self, from:&Location, to:&Location) -> bool {
+        if Rc::ptr_eq(&from.map, &to.map) {
+          return from.map.borrow().los(&from.pos, &to.pos).0;
+        }
+        return false;
+    }
+
+    pub fn los_terrain(&self, from:&Location, to:&Location) -> bool {
+        if Rc::ptr_eq(&from.map, &to.map) {
+            return from.map.borrow().los_terrain(&from.pos, &to.pos).0;
+        }
+        return false;
+    }
+
     pub fn draw(&self, dm:&mut DisplayManager, viewpoint:Location) {
         let n = viewpoint.map.borrow().named();
-        let camera = self.loc_to_td_camera(viewpoint);
+        let camera = self.loc_to_td_camera(viewpoint.clone());
         for x in 0..VIEW {
             for y in 0..VIEW {
                 let scr_loc = [x, y];
                 let src = self.canonical_loc(camera.clone()+[x,y]);
                 if let Some(loc) = src {
+                    let agent_visibility = self.los(&viewpoint, &loc);
+                    // \todo bail if location is neither visible nor mapped
                     let m = loc.map.borrow();
                     {
                     let mut bg_ok = true;
@@ -457,19 +478,19 @@ impl World {
                     if let Ok(col) = background {
                         if colors::BLACK == col { bg_ok = false; }
                     }
-                    if bg_ok { dm.set_bg(&scr_loc, background); }
+                    if bg_ok { dm.set_bg(&scr_loc, background, agent_visibility); }
                     }
                     let tiles = m.tiles(loc.pos);
                     if let Some(v) = tiles {
-                        for img in v { dm.draw(&scr_loc, img); }
+                        for img in v { dm.draw(&scr_loc, img, agent_visibility); }
                     }
                 } else { continue; }    // not valid, just fail to update
             }
         }
         // tracers so we can see what is going on
         let fake_wall = Ok(CharSpec{img:'#', c:Some(colors::WHITE)});
-        for z in VIEW..SCREEN_HEIGHT { dm.draw(&[0,z], fake_wall.clone());};    // likely bad signature for dm.draw
-        dm.draw(&[VIEW+1, VIEW-1], n);
+        for z in VIEW..SCREEN_HEIGHT { dm.draw(&[0,z], fake_wall.clone(), true);};    // likely bad signature for dm.draw
+        dm.draw(&[VIEW+1, VIEW-1], n, true);
     }
 
     pub fn new_actor(&mut self, _model: r_ActorModel, _camera:&Location, _pos:[i32;2]) -> Option<r_Actor> {

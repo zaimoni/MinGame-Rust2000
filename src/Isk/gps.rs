@@ -1,4 +1,5 @@
 use crate::isk::*;
+use crate::isk::los::*;
 use crate::isk::numerics::{Norm,Rearrange};
 use rand::Rng;
 use std::convert::TryFrom;
@@ -633,6 +634,26 @@ impl Map {
             if !obj.borrow().model.walkable { return false; }
         }
         return true;
+    }
+
+    pub fn los(&self, from:&[i32;2], to:&[i32;2]) -> (bool, Vec<Point<i32>>) {
+        let is_visible = |x:&Point::<i32>| -> bool {
+            if !self.in_bounds(**x) { return false; }
+            let dest = Map::usize_cast(**x);
+            if !self.terrain[dest[0]+dest[1]*self.dim[0]].transparent { return false; }
+            // \todo huge actors might also block LoS
+            if let Some(obj) = self.get_map_object(**x) { // check for map objects
+                if !obj.borrow().model.transparent { return false; }
+            }
+            return true;
+        };
+        return AngbandlikeTrace(u32::MAX, &Point::new(from), &Point::new(to), &is_visible);
+    }
+
+    pub fn los_terrain(&self, from:&[i32;2], to:&[i32;2]) -> (bool, Vec<Point<i32>>) {
+        return self.los(from,to);
+        // \todo vision-blocking terrain might be inferrable if a relevant corner is visible
+        // also, if non-blocking terrain is barely visible, the contained mapobject/actor need not be visible
     }
 
     // inappropriate UI functions

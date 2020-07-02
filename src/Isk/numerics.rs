@@ -49,7 +49,9 @@ impl HaveLT<u32> for i64 {
     type MaxType = i64; // u64 hard-errors (recheck when upgrading Rust target)
     fn Min(&self, r:u32) -> Self::MinType {
         if 0 >= *self { return *self; }
-        return Self::MinType::from(r);
+        let test = Self::MinType::from(r);
+        if test < *self {return test; }
+        return *self;
     }
     fn Max(&self, r:u32) -> Self::MaxType {
         if 0 >= *self { return Self::MaxType::from(r); }

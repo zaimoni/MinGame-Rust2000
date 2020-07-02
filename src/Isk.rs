@@ -449,7 +449,7 @@ impl World {
     // * need backing caches within Map class
     pub fn los(&self, from:&Location, to:&Location) -> bool {
         if Rc::ptr_eq(&from.map, &to.map) {
-          return from.map.borrow().los(&from.pos, &to.pos).0;
+            return from.map.borrow().los(&from.pos, &to.pos).0;
         }
         return false;
     }

@@ -639,6 +639,7 @@ impl Map {
     pub fn los(&self, from:&[i32;2], to:&[i32;2]) -> (bool, Vec<Point<i32>>) {
         let is_visible = |x:&Point::<i32>| -> bool {
             if !self.in_bounds(**x) { return false; }
+            if *to == **x { return true; }
             let dest = Map::usize_cast(**x);
             if !self.terrain[dest[0]+dest[1]*self.dim[0]].transparent { return false; }
             // \todo huge actors might also block LoS

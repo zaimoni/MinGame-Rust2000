@@ -461,15 +461,15 @@ impl World {
         return false;
     }
 
-    pub fn draw(&self, dm:&mut DisplayManager, viewpoint:Location) {
+    pub fn draw(&self, dm:&mut DisplayManager, viewpoint:Location, origin:Location) {
         let n = viewpoint.map.borrow().named();
-        let camera = self.loc_to_td_camera(viewpoint.clone());
+        let camera = self.loc_to_td_camera(viewpoint);
         for x in 0..VIEW {
             for y in 0..VIEW {
                 let scr_loc = [x, y];
                 let src = self.canonical_loc(camera.clone()+[x,y]);
                 if let Some(loc) = src {
-                    let agent_visibility = self.los(&viewpoint, &loc);
+                    let agent_visibility = self.los(&origin, &loc);
                     // \todo bail if location is neither visible nor mapped
                     let m = loc.map.borrow();
                     {

@@ -152,7 +152,10 @@ fn main() {
 
     while !dm.root.window_closed() {
         dm.clear();
-        world.draw(&mut dm, player.borrow().loc()); // Not clear how to implement singletons in Rust,
+        {
+        let p_loc = player.borrow().loc();
+        world.draw(&mut dm, p_loc.clone(), p_loc); // Not clear how to implement singletons in Rust,
+        }
             // so can't keep World and DisplayManager mutually ignorant
         dm.render();
 

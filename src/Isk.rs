@@ -168,15 +168,18 @@ impl Draw<String> for DisplayManager {
     }
 }
 
+pub const BASE_ACTION_COST:i16 = 100;
+
 pub struct ActorModel {
     pub name: String,
-    pub tile: TileSpec
+    pub tile: TileSpec,
+    pub base_AP: i16
 }
 type r_ActorModel = Rc<ActorModel>;
 
 impl ActorModel {
     pub fn new(_name: &str, _tile:TileSpec) -> ActorModel {
-        return ActorModel{name:_name.to_string(), tile:_tile};
+        return ActorModel{name:_name.to_string(), tile:_tile, base_AP:BASE_ACTION_COST};
     }
 
     pub fn is_named(&self, _name:&str) -> bool { return self.name == _name; }
@@ -185,7 +188,8 @@ impl ActorModel {
 pub struct Actor {
     pub is_pc: bool,
     pub model: r_ActorModel,
-    my_loc: Location
+    my_loc: Location,
+    ap:i16
 }
 pub type r_Actor = Rc<RefCell<Actor>>;
 //type w_Actor = Weak<RefCell<Actor>>;
@@ -208,7 +212,14 @@ impl ConsoleRenderable for Actor {
 
 impl Actor {
     pub fn new(_model: r_ActorModel, _loc: Location) -> Actor {
-        return Actor{model:_model, my_loc:_loc, is_pc:false};
+        let init_AP = _model.base_AP;
+        return Actor{model:_model, my_loc:_loc, is_pc:false, ap:init_AP};
+    }
+
+    pub fn energy(&self) -> i16 { return self.ap; }
+    pub fn spend_energy(&mut self, delta:i16) { self.ap -= delta; }
+    pub fn turn_postprocess(&mut self) {
+        self.ap += self.model.base_AP; // to be modified by equipment, etc.
     }
 }
 

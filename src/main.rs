@@ -110,6 +110,7 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
             match locs.len() {
                 1 => {
                     w.close(&locs[0], &pc);
+                    pc.spend_energy(BASE_ACTION_COST);
                     return false;
                 },
                 0 => {
@@ -133,9 +134,11 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
                 // transfer between owning maps
             }
             pc.set_loc(loc);
+            pc.spend_energy(BASE_ACTION_COST);
         } else if let Some(obj) = loc.get_map_object() {
             if let Some(next_obj) = &obj.borrow().model.morph_on_bump {
                 loc.set_map_object(Rc::clone(&next_obj));
+                pc.spend_energy(BASE_ACTION_COST);
             } // else {} // \todo error message
             // \todo time cost
         } // else {} // \todo error message

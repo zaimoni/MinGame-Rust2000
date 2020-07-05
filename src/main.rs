@@ -151,7 +151,7 @@ fn main() {
     let mut dm = DisplayManager::new("TCOD Skeleton Game", "fonts/dejavu12x12_gs_tc.png");
     let mut world = World::new();
     world.add_handler(event_backbone_pc);
-    let player = world.new_game();
+    let mut player = world.new_game();
 
     while !dm.root.window_closed() {
         dm.clear();
@@ -162,8 +162,17 @@ fn main() {
             // so can't keep World and DisplayManager mutually ignorant
         dm.render();
 
-        // Handling user input
-        if world.exec_key(&mut dm.root, Rc::clone(&player)) { return; }
+        let next_act = world.next_actor();
+        if let Some(act) = next_act {
+            if act.borrow().is_pc {
+                player = act;
+                // Handling user input
+                if world.exec_key(&mut dm.root, Rc::clone(&player)) { return; }
+            } else {
+                // \todo process NPC AI
+                act.borrow_mut().spend_energy(BASE_ACTION_COST);
+            }
+        }
 
         // Updating the gamestate
         // Rendering the results

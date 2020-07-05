@@ -4,7 +4,7 @@ use crate::isk::gps::Pathfinder;
 use crate::isk::numerics::{HaveLT,Norm};
 
 // Cf. Rogue Survivor Revived
-pub fn AngbandlikeTrace(maxSteps:u32, from:&Point<i32>, to:&Point<i32>, pass:&Fn(&Point<i32>) -> bool) -> (bool, Vec<Point<i32>>) {
+pub fn AngbandlikeTrace(maxSteps:u32, from:&Point<i32>, to:&Point<i32>, pass:&dyn Fn(&Point<i32>) -> bool) -> (bool, Vec<Point<i32>>) {
     let mut start = from.clone();
     let mut line = vec![start.clone()];
 
@@ -46,12 +46,12 @@ pub fn AngbandlikeTrace(maxSteps:u32, from:&Point<i32>, to:&Point<i32>, pass:&Fn
         if numerator>needRange {
             start += alt_step.clone();
             numerator -= 2*needRange;
-            if (!pass(&start)) { return (false,line); }
+            if !pass(&start) { return (false,line); }
             line.push(start.clone());
             continue;
         } else if numerator<needRange {
             start += dir_pair.0.clone();
-            if (!pass(&start)) { return (false,line); }
+            if !pass(&start) { return (false,line); }
             line.push(start.clone());
             continue;
         }

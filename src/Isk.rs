@@ -218,8 +218,9 @@ impl Actor {
 
     pub fn energy(&self) -> i16 { return self.ap; }
     pub fn spend_energy(&mut self, delta:i16) { self.ap -= delta; }
+    pub fn speed(&self) -> i16 { return self.model.base_AP; } // to be modified by equipment, etc.
     pub fn turn_postprocess(&mut self) {
-        self.ap += self.model.base_AP; // to be modified by equipment, etc.
+        self.ap += self.speed();
     }
 }
 
@@ -357,6 +358,29 @@ impl World {
             return false;
         }
         return ret;
+    }
+
+    fn turn_postprocess(&mut self) -> bool {
+        let mut no_actors = true;
+        for r_m in &self.atlas {
+            if !r_m.borrow_mut().turn_postprocess() { no_actors = false; }
+        }
+        return no_actors;
+    }
+
+    fn _next_actor(&mut self) -> Option<r_Actor> {
+        for r_m in &self.atlas {    // \todo caching for CPU efficiency
+            if let Some(act) = r_m.borrow().next_actor() { return Some(act); }
+        }
+        return None;
+    }
+
+    pub fn next_actor(&mut self) -> Option<r_Actor> {
+        loop {
+            let mut r_act = self._next_actor();
+            if let Some(act) = r_act { return Some(act); }
+            if self.turn_postprocess() { return None; }
+        }
     }
 
     pub fn canonical_loc(&self, viewpoint:Location) -> Option<Location> {

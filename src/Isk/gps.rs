@@ -657,6 +657,26 @@ impl Map {
         // also, if non-blocking terrain is barely visible, the contained mapobject/actor need not be visible
     }
 
+    pub fn next_actor(&self) -> Option<r_Actor> {
+        for r_act in &self.actors {  // \todo some caching likely needed for performance (index into this array)
+            // \todo: disallow dead actors
+            if 0 < r_act.borrow().energy() { return Some(Rc::clone(r_act)); }
+        }
+        return None;
+    }
+
+    // \return true iff no actors on this map
+    pub fn turn_postprocess(&mut self) -> bool {
+        let mut ub = self.actors.len();
+        if 0 >= ub { return true; }
+        while 0 < ub {
+            ub -= 1;
+            // \todo death processing, etc.
+            self.actors[ub].borrow_mut().turn_postprocess();
+        }
+        return false;
+    }
+
     // inappropriate UI functions
     pub fn bg(&self, pt: [usize;2]) -> BackgroundSpec {
         return self.terrain[pt[0]+pt[1]*self.dim[0]].bg.clone();

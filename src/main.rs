@@ -54,9 +54,7 @@ fn get_cache_mut() -> RwLockWriteGuard<'static, HashMap<([i32; 2], [i32; 2]), Ve
 
 // this is going to lift to another file eventually
 fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool {
-    let mut pc = r_pc.borrow_mut();
-
-    let cur_loc = pc.loc();
+    let cur_loc = r_pc.borrow().loc();
     let mut next_loc: Option<Location> = Some(cur_loc.clone());
 
     match key {
@@ -109,6 +107,7 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
             let locs = w.get_closable_locations(&cur_loc);
             match locs.len() {
                 1 => {
+                    let mut pc = r_pc.borrow_mut();
                     w.close(&locs[0], &pc);
                     pc.spend_energy(BASE_ACTION_COST);
                     return false;
@@ -128,17 +127,24 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
     }
     if let Some(loc) = next_loc {
         // \todo process bump moving
-        if loc.is_walkable_for(&pc) {
-            // \todo time cost
+        if let Some(act) = loc.get_actor() {    // linear search crashes, set up cache first
+            // we do not handle ghosts or non-forcefeedback holograms here
+            // \todo context-sensitive interpretation (melee attack/chat-trade/no-op)
+            return false;
+        }
+        if loc.is_walkable_for(&r_pc.borrow()) {
             if !Rc::ptr_eq(&loc.map,&cur_loc.map) {
                 // transfer between owning maps
             }
+            let mut pc = r_pc.borrow_mut();
             pc.set_loc(loc);
             pc.spend_energy(BASE_ACTION_COST);
-        } else if let Some(obj) = loc.get_map_object() {
+            return false;
+        }
+        if let Some(obj) = loc.get_map_object() {
             if let Some(next_obj) = &obj.borrow().model.morph_on_bump {
                 loc.set_map_object(Rc::clone(&next_obj));
-                pc.spend_energy(BASE_ACTION_COST);
+                r_pc.borrow_mut().spend_energy(BASE_ACTION_COST);
             } // else {} // \todo error message
             // \todo time cost
         } // else {} // \todo error message

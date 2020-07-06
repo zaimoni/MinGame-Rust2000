@@ -625,6 +625,14 @@ impl Map {
         else { return None; }
     }
 
+    pub fn get_actor(&self, pt:[i32;2]) -> Option<r_Actor> {
+        debug_assert!(self.in_bounds(pt));
+        for act in &self.actors {
+            if act.borrow().loc().pos == pt {return Some(Rc::clone(act));}
+        }
+        return None;
+    }
+
     pub fn is_walkable_for(&self, pt:&[i32;2], _who:&Actor) -> bool {
         debug_assert!(self.in_bounds(*pt));
         let dest = Map::usize_cast(*pt);
@@ -796,6 +804,9 @@ impl Location {
     }
     pub fn set_map_object(&self, src:r_MapObjectModel) -> Option<r_MapObject> {
         return self.map.borrow_mut().set_map_object(Rc::new(RefCell::new(MapObject::new(src,self.clone()))));
+    }
+    pub fn get_actor(&self) -> Option<r_Actor> {
+        return self.map.borrow().get_actor(self.pos);
     }
 }
 

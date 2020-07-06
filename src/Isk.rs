@@ -195,7 +195,7 @@ pub type r_Actor = Rc<RefCell<Actor>>;
 //type w_Actor = Weak<RefCell<Actor>>;
 
 impl ConsoleRenderable for Actor {
-    fn loc(&self) -> Location { return Location::new(&self.my_loc.map, self.my_loc.pos); }
+    fn loc(&self) -> Location { return self.my_loc.clone(); }
     fn fg(&self) -> TileSpec {
         if self.is_pc { return Ok(CharSpec{img:'@', c:Some(colors::WHITE)}); }
         else {
@@ -728,6 +728,7 @@ impl World {
         // \todo construct PC(s)
         let camera_anchor = Location::new(&oc_ryacho_ground_floor, [0, 0]);
         let player_model = self.new_actor_model("soldier", Ok(CharSpec{img:'s', c:None}));
+        let e1 = self.new_actor(player_model.clone(), &camera_anchor, _tower_nw.rect.center()).unwrap();
         let player = self.new_actor(player_model.clone(), &camera_anchor, [se_anchor[0]+3, se_anchor[1]+3]).unwrap();
         player.borrow_mut().is_pc = true;
         return player;

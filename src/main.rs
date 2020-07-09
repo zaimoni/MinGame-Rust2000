@@ -35,22 +35,6 @@ impl<T> Singleton<T> {
 
 static ideal_line_cache:Singleton<HashMap<([i32;2],[i32;2]),Vec<[i32;2]>>> = Singleton{ooao:None,init:Once::new()};
 */
-static mut i_line_cache:Option<RwLock<HashMap<([i32;2],[i32;2]),Vec<[i32;2]>>>> = None;
-static init:Once = Once::new();
-
-fn get_cache() -> RwLockReadGuard<'static, HashMap<([i32; 2], [i32; 2]), Vec<[i32; 2]>>> {
-    unsafe {
-        init.call_once(|| i_line_cache = Some(RwLock::new(HashMap::new())));
-        return i_line_cache.as_ref().unwrap().read().unwrap();
-    }
-}
-
-fn get_cache_mut() -> RwLockWriteGuard<'static, HashMap<([i32; 2], [i32; 2]), Vec<[i32; 2]>>> {
-    unsafe {
-        init.call_once(|| i_line_cache = Some(RwLock::new(HashMap::new())));
-        return i_line_cache.as_ref().unwrap().write().unwrap();
-    }
-}
 
 // this is going to lift to another file eventually
 fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool {

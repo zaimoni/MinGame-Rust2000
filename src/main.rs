@@ -6,10 +6,10 @@ use crate::isk::gps::*;
 use std::rc::Rc;
 use tcod::input::{Key, KeyCode /*,EventFlags,check_for_event*/};
 // Failed attempt at singleton wrapper class
+/*
 use std::collections::HashMap; 
 use std::sync::{Once,RwLock,RwLockReadGuard,RwLockWriteGuard};
 
-/*
 struct Singleton<T> {
     ooao: Option<RwLock<T>>,
     init: Once
@@ -111,7 +111,7 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
     }
     if let Some(loc) = next_loc {
         // \todo process bump moving
-        if let Some(act) = loc.get_actor() {    // linear search crashes, set up cache first
+        if let Some(_act) = loc.get_actor() {    // linear search crashes, set up cache first
             // we do not handle ghosts or non-forcefeedback holograms here
             // \todo context-sensitive interpretation (melee attack/chat-trade/no-op)
             return false;

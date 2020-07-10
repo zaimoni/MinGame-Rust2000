@@ -12,7 +12,7 @@ use tcod::input::Key;
 use std::cmp::{min,max};
 use std::cell::RefCell;
 use std::convert::TryFrom;
-use std::rc::Rc;
+use std::rc::{Rc,Weak};
 use std::time::SystemTime;
 
 // at some point we'll want both a sidebar and a message bar
@@ -193,7 +193,7 @@ pub struct Actor {
     ap:i16
 }
 pub type r_Actor = Rc<RefCell<Actor>>;
-//type w_Actor = Weak<RefCell<Actor>>;
+pub type w_Actor = Weak<RefCell<Actor>>;
 
 impl ConsoleRenderable for Actor {
     fn loc(&self) -> Location { return self.my_loc.clone(); }
@@ -378,7 +378,7 @@ impl World {
 
     pub fn next_actor(&mut self) -> Option<r_Actor> {
         loop {
-            let mut r_act = self._next_actor();
+            let r_act = self._next_actor();
             if let Some(act) = r_act { return Some(act); }
             if self.turn_postprocess() { return None; }
         }
@@ -729,7 +729,7 @@ impl World {
         // \todo construct PC(s)
         let camera_anchor = Location::new(&oc_ryacho_ground_floor, [0, 0]);
         let player_model = self.new_actor_model("soldier", Ok(CharSpec{img:'s', c:None}));
-        let e1 = self.new_actor(player_model.clone(), &camera_anchor, _tower_nw.rect.center()).unwrap();
+        let _e1 = self.new_actor(player_model.clone(), &camera_anchor, _tower_nw.rect.center()).unwrap();
         let player = self.new_actor(player_model.clone(), &camera_anchor, [se_anchor[0]+3, se_anchor[1]+3]).unwrap();
         player.borrow_mut().is_pc = true;
         return player;

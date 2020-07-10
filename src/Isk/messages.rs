@@ -1,3 +1,8 @@
+use crate::isk::*;
+use std::sync::{Once,RwLock};
+use std::rc::Weak;
+
+#[derive(Clone)]
 struct msg_panel {
     prompt: Option<String>, // UI -- possibly should be player-driven instead
     messages: Vec<(String,u8)>
@@ -25,10 +30,35 @@ impl msg_panel {
     }
 }
 
-/*
-static mut i_line_cache:Option<RwLock<HashMap<([i32;2],[i32;2]),Vec<[i32;2]>>>> = None;
-static init:Once = Once::new();
+static mut messages:Option<RwLock<Vec<(w_Actor,msg_panel)>>> = None;
+static messages_init:Once = Once::new();
 
+/*
+fn get_messages(view:r_Actor) -> Option<&'static msg_panel> {
+    unsafe {
+        messages_init.call_once(|| messages = Some(RwLock::new(Vec::new())));
+        if let Some(sc) = &messages {
+            if let Ok(mut catalog) = sc.write() {
+                let mut ub = catalog.len();
+                while 0 < ub {
+                    ub -= 1;
+                    {
+                    if let Some(r_act) = catalog[ub].0.upgrade() {
+                        if Rc::ptr_eq(&r_act, &view) {
+                            return Some(&catalog[ub].1);    // does not work
+                        }
+                        continue;
+                    }
+                    }
+                    catalog.remove(ub);
+                }
+                return None;
+            } else { return None; }
+        } else { return None; }
+    }
+}
+*/
+/*
 fn get_cache() -> RwLockReadGuard<'static, HashMap<([i32; 2], [i32; 2]), Vec<[i32; 2]>>> {
     unsafe {
         init.call_once(|| i_line_cache = Some(RwLock::new(HashMap::new())));

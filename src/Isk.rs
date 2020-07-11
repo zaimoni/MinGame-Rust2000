@@ -280,14 +280,12 @@ pub struct World {
     terrain_types: Vec<r_Terrain>,
     obj_close: Vec<[r_MapObjectModel;2]>,  // HashMap compile-errors
     event_handlers: Vec<Handler>,    // code locality; integrates InputManager functionality
-    prompt: Option<String>, // UI -- possibly should be player-driven instead
-    messages: Vec<(String,u8)>
 }
 
 impl World {
     pub fn new() -> World {
         return World{atlas:Vec::new(), actor_types:Vec::new(), obj_types:Vec::new(), terrain_types:Vec::new(), obj_close:Vec::new(),
-            event_handlers:Vec::new(), prompt:None, messages:Vec::new()};
+            event_handlers:Vec::new()};
     }
 
     pub fn new_map(&mut self, _name:&str, _dim: [i32;2], _terrain:r_Terrain) -> r_Map {

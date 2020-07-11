@@ -1,9 +1,9 @@
 use crate::isk::*;
-use std::sync::{Once,RwLock};
+use std::sync::{Once,RwLock,RwLockReadGuard,RwLockWriteGuard};
 use std::rc::Weak;
 
 #[derive(Clone)]
-struct msg_panel {
+pub struct msg_panel {
     prompt: Option<String>, // UI -- possibly should be player-driven instead
     messages: Vec<(String,u8)>
 }
@@ -28,16 +28,84 @@ impl msg_panel {
         if n >= self.messages.len() { return None; }
         return Some(&self.messages[n]);
     }
+    pub fn pop_message(&mut self) -> Option<(String,u8)> { return self.messages.pop(); }
+    pub fn unshift_message(&mut self) {
+        let ub = self.messages.len();
+        if 0 < ub { self.messages.remove(0); }
+    }
 }
 
-static mut messages:Option<RwLock<Vec<(w_Actor,msg_panel)>>> = None;
-static messages_init:Once = Once::new();
+pub struct msg_catalog {
+    catalog: Vec<(w_Actor,msg_panel)>
+}
+
+impl msg_catalog {
+    fn new() -> msg_catalog { return msg_catalog{catalog:Vec::new()}; }
+
+    fn get(&mut self, view:r_Actor) -> &msg_panel {
+        let mut ub = self.catalog.len();
+        while 0 < ub {
+            ub -= 1;
+            {
+            if let Some(r_act) = self.catalog[ub].0.upgrade() {
+                if Rc::ptr_eq(&r_act, &view) {
+                    return &self.catalog[ub].1;
+                }
+                continue;
+            }
+            }
+            self.catalog.remove(ub);
+        }
+        ub = self.catalog.len();
+        self.catalog.push((Rc::downgrade(&view),msg_panel::new()));
+        return &self.catalog[ub].1;
+    }
+    fn get_mut(&mut self, view:r_Actor) -> &mut msg_panel {
+        let mut ub = self.catalog.len();
+        while 0 < ub {
+            ub -= 1;
+            {
+            if let Some(r_act) = self.catalog[ub].0.upgrade() {
+                if Rc::ptr_eq(&r_act, &view) {
+                    return &mut self.catalog[ub].1;
+                }
+                continue;
+            }
+            }
+            self.catalog.remove(ub);
+        }
+        ub = self.catalog.len();
+        self.catalog.push((Rc::downgrade(&view),msg_panel::new()));
+        return &mut self.catalog[ub].1;
+    }
+}
+
+static mut MESSAGES:Option<RwLock<Vec<(w_Actor,msg_panel)>>> = None;
+static MESSAGES_INIT:Once = Once::new();
+
+/*
+pub fn get_messages_cache() -> RwLockReadGuard<'static, Vec<(w_Actor,msg_panel)>> {
+    unsafe {
+        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(Vec::new())));
+        if let Some(sc) = &MESSAGES { return sc.read().unwrap(); }
+        unreachable!();
+    }
+}
+*/
+
+pub fn get_messages_cache_mut() -> RwLockWriteGuard<'static, Vec<(w_Actor,msg_panel)>> {
+    unsafe {
+        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(Vec::new())));
+        if let Some(sc) = &MESSAGES { return sc.write().unwrap(); }
+        unreachable!();
+    }
+}
 
 /*
 fn get_messages(view:r_Actor) -> Option<&'static msg_panel> {
     unsafe {
-        messages_init.call_once(|| messages = Some(RwLock::new(Vec::new())));
-        if let Some(sc) = &messages {
+        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(Vec::new())));
+        if let Some(sc) = &MESSAGES {
             if let Ok(mut catalog) = sc.write() {
                 let mut ub = catalog.len();
                 while 0 < ub {
@@ -55,21 +123,6 @@ fn get_messages(view:r_Actor) -> Option<&'static msg_panel> {
                 return None;
             } else { return None; }
         } else { return None; }
-    }
-}
-*/
-/*
-fn get_cache() -> RwLockReadGuard<'static, HashMap<([i32; 2], [i32; 2]), Vec<[i32; 2]>>> {
-    unsafe {
-        init.call_once(|| i_line_cache = Some(RwLock::new(HashMap::new())));
-        return i_line_cache.as_ref().unwrap().read().unwrap();
-    }
-}
-
-fn get_cache_mut() -> RwLockWriteGuard<'static, HashMap<([i32; 2], [i32; 2]), Vec<[i32; 2]>>> {
-    unsafe {
-        init.call_once(|| i_line_cache = Some(RwLock::new(HashMap::new())));
-        return i_line_cache.as_ref().unwrap().write().unwrap();
     }
 }
 */

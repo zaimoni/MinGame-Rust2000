@@ -495,7 +495,9 @@ impl World {
         return false;
     }
 
-    pub fn draw(&self, dm:&mut DisplayManager, viewpoint:Location, origin:Location) {
+    pub fn draw(&self, dm:&mut DisplayManager, viewpoint:Location, o_act:&r_Actor) {
+        use crate::isk::messages::*;
+        let origin = o_act.borrow().loc();
         let n = viewpoint.map.borrow().named();
         let camera = self.loc_to_td_camera(viewpoint);
         for x in 0..VIEW {
@@ -522,9 +524,33 @@ impl World {
             }
         }
         // tracers so we can see what is going on
-        let fake_wall = Ok(CharSpec{img:'#', c:Some(colors::WHITE)});
-        for z in VIEW..SCREEN_HEIGHT { dm.draw(&[0,z], fake_wall.clone(), true);};    // likely bad signature for dm.draw
-        dm.draw(&[VIEW+1, VIEW-1], n, true);
+        let mut enhance_life_XXX = get_messages_cache_mut();
+        let msgs = enhance_life_XXX.get_mut(Rc::clone(o_act));
+        if let Some(pr) = msgs.prompt() { dm.draw(&[0,VIEW], pr, true); }
+        for z in VIEW+1..SCREEN_HEIGHT-1 {
+            let delta = usize::try_from(z - (VIEW+1)).unwrap();
+            if let Some(msg) = msgs.message(delta) {
+                if 1 >= msg.1 { dm.draw(&[0,z], msg.0.clone(), true); }
+                else { dm.draw(&[0,z], msg.0.clone()+"(x "+&msg.1.to_string()+")", true); }
+            }
+        }
+        // handle SCREEN_HEIGHT specially
+        let msg_count = i32::try_from(msgs.count()).unwrap();
+        if SCREEN_HEIGHT - (VIEW+1) == msg_count {
+            let delta = usize::try_from(SCREEN_HEIGHT - (VIEW+1)).unwrap();
+            if let Some(msg) = msgs.message(delta) {
+                if 1 >= msg.1 { dm.draw(&[0,SCREEN_HEIGHT - (VIEW+1)], msg.0.clone(), true); }
+                else { dm.draw(&[0,SCREEN_HEIGHT - (VIEW+1)], msg.0.clone()+"(x "+&msg.1.to_string()+")", true); }
+            }
+        } else if SCREEN_HEIGHT - (VIEW+1) < msg_count {
+            dm.draw(&[0,SCREEN_HEIGHT - (VIEW+1)], "(more)".to_string(), true);
+        } else if 0 == msg_count {
+            let fake_wall = Ok(CharSpec{img:'#', c:Some(colors::WHITE)});
+            for z in VIEW+1..SCREEN_HEIGHT { dm.draw(&[0,z], fake_wall.clone(), true);};    // likely bad signature for dm.draw
+        }
+
+        // the left panel
+        dm.draw(&[VIEW+1, VIEW-1], n, true);    // map name
     }
 
     pub fn new_actor(&mut self, _model: r_ActorModel, _camera:&Location, _pos:[i32;2]) -> Option<r_Actor> {

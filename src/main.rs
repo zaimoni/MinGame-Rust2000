@@ -37,6 +37,7 @@ static ideal_line_cache:Singleton<HashMap<([i32;2],[i32;2]),Vec<[i32;2]>>> = Sin
 */
 
 // this is going to lift to another file eventually
+// errors at this handler cannot overwrite other modes, so plausibly best to use prompt rather than set_message here
 fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool {
     use crate::isk::messages::*;
 
@@ -101,7 +102,7 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
                     return false;
                 },
                 0 => {
-                    get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).add_message("nothing closeable in reach");
+                    get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt("nothing closeable in reach");
                     return false;
                 },
                 _ => {
@@ -118,7 +119,7 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
         if let Some(act) = loc.get_actor() {    // linear search crashes, set up cache first
             // we do not handle ghosts or non-forcefeedback holograms here
             // \todo context-sensitive interpretation (melee attack/chat-trade/no-op)
-            get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).add_message(&(act.borrow().model.name.clone()+" in way"));
+            get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt(&(act.borrow().model.name.clone()+" in way"));
             return false;
         }
         if loc.is_walkable_for(&r_pc.borrow()) {
@@ -135,10 +136,10 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
                 loc.set_map_object(Rc::clone(&next_obj));
                 r_pc.borrow_mut().spend_energy(BASE_ACTION_COST);
             } else {
-                get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).add_message(&(obj.borrow().model.name.clone()+" in way"));
+                get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt(&(obj.borrow().model.name.clone()+" in way"));
             }
         } else {
-            get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).add_message("Fourth Wall in way ;)");
+            get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt("Fourth Wall in way ;)");
         }
     } else {
        get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt("Unrecognized command");
@@ -157,7 +158,7 @@ fn main() {
         dm.clear();
         {
         let p_loc = player.borrow().loc();
-        world.draw(&mut dm, p_loc.clone(), p_loc); // Not clear how to implement singletons in Rust,
+        world.draw(&mut dm, p_loc, &player); // Not clear how to implement singletons in Rust,
         }
             // so can't keep World and DisplayManager mutually ignorant
         dm.render();

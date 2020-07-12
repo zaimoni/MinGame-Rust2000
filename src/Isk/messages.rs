@@ -14,6 +14,7 @@ impl msg_panel {
     pub fn set_prompt(&mut self, src:&str) { self.prompt = Some(src.to_string()); }
     pub fn clear_prompt(&mut self) { self.prompt = None; }
 
+    pub fn count(&self) -> usize { return self.messages.len() }
     pub fn add_message(&mut self, src:&str) {
         if src.is_empty() {return;}
         let ub = self.messages.len();

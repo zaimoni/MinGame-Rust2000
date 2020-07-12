@@ -38,6 +38,10 @@ static ideal_line_cache:Singleton<HashMap<([i32;2],[i32;2]),Vec<[i32;2]>>> = Sin
 
 // this is going to lift to another file eventually
 fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool {
+    use crate::isk::messages::*;
+
+    get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).clear_prompt();
+
     let cur_loc = r_pc.borrow().loc();
     let mut next_loc: Option<Location> = Some(cur_loc.clone());
 
@@ -97,7 +101,7 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
                     return false;
                 },
                 0 => {
-                    // \todo error message
+                    get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).add_message("nothing closeable in reach");
                     return false;
                 },
                 _ => {
@@ -111,9 +115,10 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
     }
     if let Some(loc) = next_loc {
         // \todo process bump moving
-        if let Some(_act) = loc.get_actor() {    // linear search crashes, set up cache first
+        if let Some(act) = loc.get_actor() {    // linear search crashes, set up cache first
             // we do not handle ghosts or non-forcefeedback holograms here
             // \todo context-sensitive interpretation (melee attack/chat-trade/no-op)
+            get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).add_message(&(act.borrow().model.name.clone()+" in way"));
             return false;
         }
         if loc.is_walkable_for(&r_pc.borrow()) {
@@ -129,10 +134,15 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
             if let Some(next_obj) = &obj.borrow().model.morph_on_bump {
                 loc.set_map_object(Rc::clone(&next_obj));
                 r_pc.borrow_mut().spend_energy(BASE_ACTION_COST);
-            } // else {} // \todo error message
-            // \todo time cost
-        } // else {} // \todo error message
-    } // else {} // \todo error message
+            } else {
+                get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).add_message(&(obj.borrow().model.name.clone()+" in way"));
+            }
+        } else {
+            get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).add_message("Fourth Wall in way ;)");
+        }
+    } else {
+       get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt("Unrecognized command");
+    }
 
     return false;
 }

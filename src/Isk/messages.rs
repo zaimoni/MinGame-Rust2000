@@ -1,6 +1,5 @@
 use crate::isk::*;
 use std::sync::{Once,RwLock,RwLockReadGuard,RwLockWriteGuard};
-use std::rc::Weak;
 
 #[derive(Clone)]
 pub struct msg_panel {
@@ -40,9 +39,9 @@ pub struct msg_catalog {
 }
 
 impl msg_catalog {
-    fn new() -> msg_catalog { return msg_catalog{catalog:Vec::new()}; }
+    pub fn new() -> msg_catalog { return msg_catalog{catalog:Vec::new()}; }
 
-    fn get(&mut self, view:r_Actor) -> &msg_panel {
+    pub fn get(&mut self, view:r_Actor) -> &msg_panel {
         let mut ub = self.catalog.len();
         while 0 < ub {
             ub -= 1;
@@ -60,7 +59,7 @@ impl msg_catalog {
         self.catalog.push((Rc::downgrade(&view),msg_panel::new()));
         return &self.catalog[ub].1;
     }
-    fn get_mut(&mut self, view:r_Actor) -> &mut msg_panel {
+    pub fn get_mut(&mut self, view:r_Actor) -> &mut msg_panel {
         let mut ub = self.catalog.len();
         while 0 < ub {
             ub -= 1;
@@ -80,22 +79,22 @@ impl msg_catalog {
     }
 }
 
-static mut MESSAGES:Option<RwLock<Vec<(w_Actor,msg_panel)>>> = None;
+static mut MESSAGES:Option<RwLock<msg_catalog>> = None;
 static MESSAGES_INIT:Once = Once::new();
 
 /*
-pub fn get_messages_cache() -> RwLockReadGuard<'static, Vec<(w_Actor,msg_panel)>> {
+pub fn get_messages_cache() -> RwLockReadGuard<'static, msg_catalog> {
     unsafe {
-        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(Vec::new())));
+        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(msg_catalog::new())));
         if let Some(sc) = &MESSAGES { return sc.read().unwrap(); }
         unreachable!();
     }
 }
 */
 
-pub fn get_messages_cache_mut() -> RwLockWriteGuard<'static, Vec<(w_Actor,msg_panel)>> {
+pub fn get_messages_cache_mut() -> RwLockWriteGuard<'static, msg_catalog> {
     unsafe {
-        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(Vec::new())));
+        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(msg_catalog::new())));
         if let Some(sc) = &MESSAGES { return sc.write().unwrap(); }
         unreachable!();
     }
@@ -104,7 +103,7 @@ pub fn get_messages_cache_mut() -> RwLockWriteGuard<'static, Vec<(w_Actor,msg_pa
 /*
 fn get_messages(view:r_Actor) -> Option<&'static msg_panel> {
     unsafe {
-        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(Vec::new())));
+        MESSAGES_INIT.call_once(|| MESSAGES = Some(RwLock::new(msg_catalog::new())));
         if let Some(sc) = &MESSAGES {
             if let Ok(mut catalog) = sc.write() {
                 let mut ub = catalog.len();

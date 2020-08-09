@@ -611,6 +611,12 @@ impl Map {
         self.terrain[dest[0]+dest[1]*self.dim[0]] = src;
     }
 
+    pub fn get_terrain(&self, pt: [i32;2]) -> r_Terrain {
+        debug_assert!(self.in_bounds(pt));
+        let dest = Map::usize_cast(pt);
+        return Rc::clone(&self.terrain[dest[0]+dest[1]*self.dim[0]]);
+    }
+
     pub fn set_map_object(&mut self, src:r_MapObject) -> Option<r_MapObject> {
         let loc = src.borrow().loc();
 //      let map = loc.map.borrow();
@@ -799,15 +805,12 @@ impl Location {
     }
 
     pub fn is_walkable_for(&self, who:&Actor) -> bool { return self.map.borrow().is_walkable_for(&self.pos, who); }
-    pub fn get_map_object(&self) -> Option<r_MapObject> {
-        return self.map.borrow().get_map_object(self.pos);
-    }
+    pub fn get_map_object(&self) -> Option<r_MapObject> { return self.map.borrow().get_map_object(self.pos); }
     pub fn set_map_object(&self, src:r_MapObjectModel) -> Option<r_MapObject> {
         return self.map.borrow_mut().set_map_object(Rc::new(RefCell::new(MapObject::new(src,self.clone()))));
     }
-    pub fn get_actor(&self) -> Option<r_Actor> {
-        return self.map.borrow().get_actor(self.pos);
-    }
+    pub fn get_actor(&self) -> Option<r_Actor> { return self.map.borrow().get_actor(self.pos); }
+    pub fn get_terrain(&self) -> r_Terrain { return self.map.borrow().get_terrain(self.pos); }
 }
 
 impl std::fmt::Debug for Location {

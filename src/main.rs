@@ -112,7 +112,10 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
             }
         },
 
-        _ => { return false; }
+        _ => {
+            get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt("Unrecognized command");
+            return false;
+        }
     }
     if let Some(loc) = next_loc {
         // \todo process bump moving
@@ -138,11 +141,13 @@ fn event_backbone_pc(key:Key, r: &mut Root, w:&mut World, r_pc:r_Actor) -> bool 
             } else {
                 get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt(&(obj.borrow().model.name.clone()+" in way"));
             }
+        } else if !loc.get_terrain().walkable {
+            get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt(&(loc.get_terrain().name.clone() + " in way"));
         } else {
             get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt("Fourth Wall in way ;)");
         }
     } else {
-       get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt("Unrecognized command");
+       get_messages_cache_mut().get_mut(Rc::clone(&r_pc)).set_prompt("Fourth Wall in way ;)");
     }
 
     return false;

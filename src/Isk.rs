@@ -171,6 +171,26 @@ impl Draw<String> for DisplayManager {
 
 pub const BASE_ACTION_COST:i16 = 100;
 
+pub struct HPstats {
+    maxHp: i16,
+    curHp: i16,
+}
+
+impl HPstats {
+    pub fn new(_hp:i16) -> HPstats { return HPstats{maxHp:_hp, curHp:_hp}; }
+
+    pub fn isDead(&self) -> bool { return 0 >= self.curHp; }
+
+    pub fn takeHit(&mut self, mut delta:i16) {
+        if 0 > delta {
+            if self.maxHp <= self.curHp { return; }
+            let allow = self.curHp - self.maxHp;
+            if allow > delta { delta = allow; }
+        }
+        self.curHp -= delta;
+    }
+}
+
 pub struct ActorModel {
     pub name: String,
     pub tile: TileSpec,
